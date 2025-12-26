@@ -1,0 +1,29 @@
+[project]
+name = "unified-ads-mcp"
+version = "1.0.0"
+description = "Unified MCP server for Google Ads and Meta Ads management"
+readme = "README.md"
+requires-python = ">=3.12"
+license = "MIT"
+
+dependencies = [
+    "fastmcp>=2.14.1",
+    "google-ads>=28.4.0",
+    "facebook-business>=22.0.0",
+    "httpx>=0.28.0",
+    "pyyaml>=6.0",
+    "python-dotenv>=1.0.0",
+]
+
+[project.scripts]
+unified-ads-mcp = "unified_ads_mcp:main"
+
+[tool.uv]
+package = true
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/unified_ads_mcp"]

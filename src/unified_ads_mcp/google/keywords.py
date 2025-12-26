@@ -1,0 +1,502 @@
+"""Keyword management tools for Google Ads API.
+
+This module provides MCP tools for managing Google Ads keywords including
+listing, adding, updating, and removing keywords within ad groups.
+"""
+
+from typing import Any, Optional
+
+from google.ads.googleads.errors import GoogleAdsException
+from mcp.server.fastmcp import ToolError
+
+from ..server import mcp
+from .client import get_google_ads_client, clean_customer_id, format_error
+
+
+@mcp.tool()
+def google_list_keywords(
+    customer_id: str,
+    ad_group_id: Optional[str] = None,
+    status: Optional[str] = None,
+    login_customer_id: Optional[str] = None,
+) -> list[dict[str, Any]]:
+    """Lists keywords for a Google Ads customer with performance metrics.
+
+    Args:
+        customer_id: The Google Ads customer ID (digits only, no dashes).
+        ad_group_id: Optional ad group ID to filter keywords.
+        status: Optional filter by status - ENABLED, PAUSED, or REMOVED.
+        login_customer_id: Optional MCC account ID if accessing through
+            a manager account.
+
+    Returns:
+        list[dict]: List of keywords with:
+            - id: Keyword criterion ID
+            - ad_group_id: Parent ad group ID
+            - ad_group_name: Parent ad group name
+            - keyword_text: The keyword text
+            - match_type: Match type (EXACT, PHRASE, BROAD)
+            - status: Keyword status
+            - cpc_bid_micros: CPC bid in micros
+            - impressions: Total impressions
+            - clicks: Total clicks
+            - cost_micros: Total cost in micros
+            - conversions: Total conversions
+            - quality_score: Quality score (if available)
+
+    Raises:
+        ToolError: If the API request fails.
+    """
+    try:
+        client = get_google_ads_client(login_customer_id=login_customer_id)
+        customer_id = clean_customer_id(customer_id)
+
+
+        query = """
+            SELECT
+                ad_group_criterion.criterion_id,
+                ad_group_criterion.keyword.text,
+                ad_group_criterion.keyword.match_type,
+                ad_group_criterion.status,
+                ad_group_criterion.cpc_bid_micros,
+                ad_group_criterion.quality_info.quality_score,
+                ad_group.id,
+                ad_group.name,
+                campaign.id,
+                campaign.name,
+                metrics.impressions,
+                metrics.clicks,
+                metrics.cost_micros,
+                metrics.conversions
+            FROM keyword_view
+        """
+
+        conditions = []
+        if ad_group_id:
+            conditions.append(f"ad_group.id = {ad_group_id}")
+        if status:
+            conditions.append(f"ad_group_criterion.status = '{status.upper()}'")
+
+        if conditions:
+            query += " WHERE " + " AND ".join(conditions)
+
+        query += " ORDER BY ad_group_criterion.criterion_id"
+
+        ga_service = client.get_service("GoogleAdsService")
+        response = ga_service.search_stream(
+            customer_id=customer_id,
+            query=query,
+        )
+
+        keywords = []
+        for batch in response:
+            for row in batch.results:
+                keywords.append({
+                    "id": str(row.ad_group_criterion.criterion_id),
+                    "ad_group_id": str(row.ad_group.id),
+                    "ad_group_name": row.ad_group.name,
+                    "campaign_id": str(row.campaign.id),
+                    "campaign_name": row.campaign.name,
+                    "keyword_text": row.ad_group_criterion.keyword.text,
+                    "match_type": row.ad_group_criterion.keyword.match_type.name,
+                    "status": row.ad_group_criterion.status.name,
+                    "cpc_bid_micros": row.ad_group_criterion.cpc_bid_micros,
+                    "quality_score": row.ad_group_criterion.quality_info.quality_score or None,
+                    "impressions": row.metrics.impressions,
+                    "clicks": row.metrics.clicks,
+                    "cost_micros": row.metrics.cost_micros,
+                    "conversions": row.metrics.conversions,
+                })
+
+        return keywords
+
+    except GoogleAdsException as e:
+        raise ToolError(format_error(e)) from e
+
+
+@mcp.tool()
+def google_get_keyword(
+    customer_id: str,
+    ad_group_id: str,
+    keyword_id: str,
+    login_customer_id: Optional[str] = None,
+) -> dict[str, Any]:
+    """Gets detailed information about a specific keyword.
+
+    Args:
+        customer_id: The Google Ads customer ID (digits only, no dashes).
+        ad_group_id: The ad group ID containing the keyword.
+        keyword_id: The keyword criterion ID to retrieve.
+        login_customer_id: Optional MCC account ID if accessing through
+            a manager account.
+
+    Returns:
+        dict: Keyword details including:
+            - id: Keyword criterion ID
+            - keyword_text: The keyword text
+            - match_type: Match type
+            - status: Keyword status
+            - cpc_bid_micros: CPC bid
+            - quality_score: Quality score
+            - creative_quality_score: Creative quality
+            - post_click_quality_score: Post-click quality
+            - search_predicted_ctr: Predicted CTR
+            - All performance metrics
+
+    Raises:
+        ToolError: If the keyword is not found or API request fails.
+    """
+    try:
+        client = get_google_ads_client(login_customer_id=login_customer_id)
+        customer_id = clean_customer_id(customer_id)
+
+
+        query = f"""
+            SELECT
+                ad_group_criterion.criterion_id,
+                ad_group_criterion.keyword.text,
+                ad_group_criterion.keyword.match_type,
+                ad_group_criterion.status,
+                ad_group_criterion.cpc_bid_micros,
+                ad_group_criterion.final_urls,
+                ad_group_criterion.quality_info.quality_score,
+                ad_group_criterion.quality_info.creative_quality_score,
+                ad_group_criterion.quality_info.post_click_quality_score,
+                ad_group_criterion.quality_info.search_predicted_ctr,
+                ad_group.id,
+                ad_group.name,
+                campaign.id,
+                campaign.name,
+                metrics.impressions,
+                metrics.clicks,
+                metrics.cost_micros,
+                metrics.conversions,
+                metrics.ctr,
+                metrics.average_cpc,
+                metrics.average_position
+            FROM keyword_view
+            WHERE ad_group.id = {ad_group_id}
+                AND ad_group_criterion.criterion_id = {keyword_id}
+        """
+
+        ga_service = client.get_service("GoogleAdsService")
+        response = ga_service.search_stream(
+            customer_id=customer_id,
+            query=query,
+        )
+
+        for batch in response:
+            for row in batch.results:
+                quality_info = row.ad_group_criterion.quality_info
+                return {
+                    "id": str(row.ad_group_criterion.criterion_id),
+                    "ad_group_id": str(row.ad_group.id),
+                    "ad_group_name": row.ad_group.name,
+                    "campaign_id": str(row.campaign.id),
+                    "campaign_name": row.campaign.name,
+                    "keyword_text": row.ad_group_criterion.keyword.text,
+                    "match_type": row.ad_group_criterion.keyword.match_type.name,
+                    "status": row.ad_group_criterion.status.name,
+                    "cpc_bid_micros": row.ad_group_criterion.cpc_bid_micros,
+                    "final_urls": list(row.ad_group_criterion.final_urls),
+                    "quality_score": quality_info.quality_score or None,
+                    "creative_quality_score": quality_info.creative_quality_score.name if quality_info.creative_quality_score else None,
+                    "post_click_quality_score": quality_info.post_click_quality_score.name if quality_info.post_click_quality_score else None,
+                    "search_predicted_ctr": quality_info.search_predicted_ctr.name if quality_info.search_predicted_ctr else None,
+                    "impressions": row.metrics.impressions,
+                    "clicks": row.metrics.clicks,
+                    "cost_micros": row.metrics.cost_micros,
+                    "conversions": row.metrics.conversions,
+                    "ctr": row.metrics.ctr,
+                    "average_cpc": row.metrics.average_cpc,
+                }
+
+        raise ToolError(f"Keyword {keyword_id} not found in ad group {ad_group_id}")
+
+    except GoogleAdsException as e:
+        raise ToolError(format_error(e)) from e
+
+
+@mcp.tool()
+def google_add_keywords(
+    customer_id: str,
+    ad_group_id: str,
+    keywords: list[str],
+    match_type: str = "BROAD",
+    cpc_bid_micros: Optional[int] = None,
+    status: str = "ENABLED",
+    login_customer_id: Optional[str] = None,
+) -> dict[str, Any]:
+    """Adds keywords to an ad group.
+
+    Args:
+        customer_id: The Google Ads customer ID (digits only, no dashes).
+        ad_group_id: The ad group ID to add keywords to.
+        keywords: List of keyword texts to add.
+        match_type: Match type for all keywords. Options:
+            - BROAD: Broad match (default)
+            - PHRASE: Phrase match
+            - EXACT: Exact match
+        cpc_bid_micros: Optional CPC bid in micros (uses ad group default if not set).
+        status: Initial status - ENABLED (default) or PAUSED.
+        login_customer_id: Optional MCC account ID if accessing through
+            a manager account.
+
+    Returns:
+        dict: Created keywords details:
+            - keywords_added: Number of keywords added
+            - keyword_ids: List of new keyword criterion IDs
+            - status: Creation status
+
+    Raises:
+        ToolError: If the API request fails.
+    """
+    if not keywords:
+        raise ToolError("At least one keyword is required")
+
+    try:
+        client = get_google_ads_client(login_customer_id=login_customer_id)
+        customer_id = clean_customer_id(customer_id)
+
+
+        ad_group_criterion_service = client.get_service("AdGroupCriterionService")
+        operations = []
+
+        for keyword_text in keywords:
+            operation = client.get_type("AdGroupCriterionOperation")
+            criterion = operation.create
+
+            criterion.ad_group = f"customers/{customer_id}/adGroups/{ad_group_id}"
+            criterion.status = client.enums.AdGroupCriterionStatusEnum[status.upper()]
+
+            criterion.keyword.text = keyword_text
+            criterion.keyword.match_type = client.enums.KeywordMatchTypeEnum[match_type.upper()]
+
+            if cpc_bid_micros is not None:
+                criterion.cpc_bid_micros = cpc_bid_micros
+
+            operations.append(operation)
+
+        response = ad_group_criterion_service.mutate_ad_group_criteria(
+            customer_id=customer_id,
+            operations=operations,
+        )
+
+        keyword_ids = [
+            result.resource_name.split("~")[-1]
+            for result in response.results
+        ]
+
+        return {
+            "keywords_added": len(keyword_ids),
+            "keyword_ids": keyword_ids,
+            "status": "created",
+        }
+
+    except GoogleAdsException as e:
+        raise ToolError(format_error(e)) from e
+
+
+@mcp.tool()
+def google_update_keyword(
+    customer_id: str,
+    ad_group_id: str,
+    keyword_id: str,
+    status: Optional[str] = None,
+    cpc_bid_micros: Optional[int] = None,
+    final_urls: Optional[list[str]] = None,
+    login_customer_id: Optional[str] = None,
+) -> dict[str, Any]:
+    """Updates a keyword's settings.
+
+    Note: The keyword text and match type cannot be changed.
+    To change these, remove the keyword and create a new one.
+
+    Args:
+        customer_id: The Google Ads customer ID (digits only, no dashes).
+        ad_group_id: The ad group ID containing the keyword.
+        keyword_id: The keyword criterion ID to update.
+        status: Optional new status - ENABLED, PAUSED, or REMOVED.
+        cpc_bid_micros: Optional new CPC bid in micros.
+        final_urls: Optional list of final URLs for the keyword.
+        login_customer_id: Optional MCC account ID if accessing through
+            a manager account.
+
+    Returns:
+        dict: Updated keyword details:
+            - keyword_resource_name: Full resource name
+            - updated_fields: List of fields that were updated
+            - status: "updated"
+
+    Raises:
+        ToolError: If no fields to update or API request fails.
+    """
+    try:
+        client = get_google_ads_client(login_customer_id=login_customer_id)
+        customer_id = clean_customer_id(customer_id)
+
+
+        ad_group_criterion_service = client.get_service("AdGroupCriterionService")
+        operation = client.get_type("AdGroupCriterionOperation")
+        criterion = operation.update
+
+        criterion.resource_name = f"customers/{customer_id}/adGroupCriteria/{ad_group_id}~{keyword_id}"
+
+        field_mask = []
+
+        if status is not None:
+            criterion.status = client.enums.AdGroupCriterionStatusEnum[status.upper()]
+            field_mask.append("status")
+
+        if cpc_bid_micros is not None:
+            criterion.cpc_bid_micros = cpc_bid_micros
+            field_mask.append("cpc_bid_micros")
+
+        if final_urls is not None:
+            criterion.final_urls.extend(final_urls)
+            field_mask.append("final_urls")
+
+        if not field_mask:
+            raise ToolError("No fields to update. Provide at least one field.")
+
+        operation.update_mask.paths.extend(field_mask)
+
+        response = ad_group_criterion_service.mutate_ad_group_criteria(
+            customer_id=customer_id,
+            operations=[operation],
+        )
+
+        return {
+            "keyword_resource_name": response.results[0].resource_name,
+            "updated_fields": field_mask,
+            "status": "updated",
+        }
+
+    except GoogleAdsException as e:
+        raise ToolError(format_error(e)) from e
+
+
+@mcp.tool()
+def google_remove_keyword(
+    customer_id: str,
+    ad_group_id: str,
+    keyword_id: str,
+    login_customer_id: Optional[str] = None,
+) -> dict[str, Any]:
+    """Removes a keyword from an ad group.
+
+    Note: This sets the keyword status to REMOVED. The keyword data
+    is retained and can still be queried but cannot be reactivated.
+
+    Args:
+        customer_id: The Google Ads customer ID (digits only, no dashes).
+        ad_group_id: The ad group ID containing the keyword.
+        keyword_id: The keyword criterion ID to remove.
+        login_customer_id: Optional MCC account ID if accessing through
+            a manager account.
+
+    Returns:
+        dict: Removal status:
+            - keyword_resource_name: Full resource name
+            - status: "removed"
+
+    Raises:
+        ToolError: If the API request fails.
+    """
+    try:
+        client = get_google_ads_client(login_customer_id=login_customer_id)
+        customer_id = clean_customer_id(customer_id)
+
+
+        ad_group_criterion_service = client.get_service("AdGroupCriterionService")
+        operation = client.get_type("AdGroupCriterionOperation")
+        operation.remove = f"customers/{customer_id}/adGroupCriteria/{ad_group_id}~{keyword_id}"
+
+        response = ad_group_criterion_service.mutate_ad_group_criteria(
+            customer_id=customer_id,
+            operations=[operation],
+        )
+
+        return {
+            "keyword_resource_name": response.results[0].resource_name,
+            "status": "removed",
+        }
+
+    except GoogleAdsException as e:
+        raise ToolError(format_error(e)) from e
+
+
+@mcp.tool()
+def google_add_negative_keywords(
+    customer_id: str,
+    ad_group_id: str,
+    keywords: list[str],
+    match_type: str = "BROAD",
+    login_customer_id: Optional[str] = None,
+) -> dict[str, Any]:
+    """Adds negative keywords to an ad group.
+
+    Negative keywords prevent ads from showing for specific search terms.
+
+    Args:
+        customer_id: The Google Ads customer ID (digits only, no dashes).
+        ad_group_id: The ad group ID to add negative keywords to.
+        keywords: List of negative keyword texts to add.
+        match_type: Match type for all keywords. Options:
+            - BROAD: Broad match negative (default)
+            - PHRASE: Phrase match negative
+            - EXACT: Exact match negative
+        login_customer_id: Optional MCC account ID if accessing through
+            a manager account.
+
+    Returns:
+        dict: Created negative keywords details:
+            - keywords_added: Number of keywords added
+            - keyword_ids: List of new keyword criterion IDs
+            - status: Creation status
+
+    Raises:
+        ToolError: If the API request fails.
+    """
+    if not keywords:
+        raise ToolError("At least one negative keyword is required")
+
+    try:
+        client = get_google_ads_client(login_customer_id=login_customer_id)
+        customer_id = clean_customer_id(customer_id)
+
+
+        ad_group_criterion_service = client.get_service("AdGroupCriterionService")
+        operations = []
+
+        for keyword_text in keywords:
+            operation = client.get_type("AdGroupCriterionOperation")
+            criterion = operation.create
+
+            criterion.ad_group = f"customers/{customer_id}/adGroups/{ad_group_id}"
+            criterion.negative = True
+
+            criterion.keyword.text = keyword_text
+            criterion.keyword.match_type = client.enums.KeywordMatchTypeEnum[match_type.upper()]
+
+            operations.append(operation)
+
+        response = ad_group_criterion_service.mutate_ad_group_criteria(
+            customer_id=customer_id,
+            operations=operations,
+        )
+
+        keyword_ids = [
+            result.resource_name.split("~")[-1]
+            for result in response.results
+        ]
+
+        return {
+            "keywords_added": len(keyword_ids),
+            "keyword_ids": keyword_ids,
+            "type": "negative",
+            "status": "created",
+        }
+
+    except GoogleAdsException as e:
+        raise ToolError(format_error(e)) from e

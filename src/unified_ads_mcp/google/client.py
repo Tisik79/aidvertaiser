@@ -1,0 +1,234 @@
+"""Google Ads API client factory.
+
+This module provides factory functions for creating configured Google Ads API clients
+that use the authentication handled by the auth module.
+
+Example:
+    >>> from unified_ads_mcp.google.client import get_google_ads_client
+    >>> client = get_google_ads_client()
+    >>> # Use client with google-ads library
+    >>> ga_service = client.get_service("GoogleAdsService")
+"""
+
+import os
+import sys
+from typing import Any, Optional
+
+from google.ads.googleads.client import GoogleAdsClient
+from google.ads.googleads.errors import GoogleAdsException
+import proto
+import yaml
+
+from unified_ads_mcp.auth.google_auth import get_google_auth, GoogleAdsAuth
+
+
+# Default path for Google Ads credentials
+DEFAULT_CREDENTIALS_PATH = os.path.expanduser("~/google-ads.yaml")
+
+
+class GoogleAdsClientFactory:
+    """Factory for creating configured Google Ads API clients.
+
+    This factory manages the creation of GoogleAdsClient instances with
+    proper authentication and configuration. It supports:
+        - Automatic OAuth authentication via browser
+        - MCC (Manager Customer Center) account access
+        - Customer ID specification at client creation time
+
+    Example:
+        >>> factory = GoogleAdsClientFactory()
+        >>> client = factory.get_client(login_customer_id="1234567890")
+    """
+
+    def __init__(self, auth: Optional[GoogleAdsAuth] = None):
+        """Initialize the client factory.
+
+        Args:
+            auth: Optional GoogleAdsAuth instance. If not provided,
+                  the global singleton will be used.
+        """
+        self._auth = auth
+
+    @property
+    def auth(self) -> GoogleAdsAuth:
+        """Get the auth handler, creating if necessary."""
+        if self._auth is None:
+            self._auth = get_google_auth()
+        return self._auth
+
+    def get_client(
+        self,
+        login_customer_id: Optional[str] = None,
+        force_refresh: bool = False,
+    ) -> GoogleAdsClient:
+        """Get a configured Google Ads client.
+
+        Args:
+            login_customer_id: Customer ID to use for login (for MCC access).
+                             Defaults to the value from config.
+            force_refresh: If True, force re-authentication.
+
+        Returns:
+            A configured GoogleAdsClient instance.
+
+        Raises:
+            GoogleAdsException: If client creation fails.
+        """
+        auth = self.auth
+        credentials = auth.get_credentials(force_refresh=force_refresh)
+
+        # Use provided login_customer_id or fall back to config
+        lid = login_customer_id or auth.login_customer_id
+
+        # Clean up customer ID (remove dashes if present)
+        if lid:
+            lid = str(lid).replace("-", "")
+
+        try:
+            client = GoogleAdsClient(
+                credentials=credentials,
+                developer_token=auth.developer_token,
+                login_customer_id=lid,
+            )
+            return client
+        except Exception as e:
+            print(f"[Google Ads] Client creation failed: {e}", file=sys.stderr)
+            raise
+
+    def validate_client(self, client: GoogleAdsClient) -> bool:
+        """Validate that a client can successfully connect to the API.
+
+        Args:
+            client: The GoogleAdsClient to validate.
+
+        Returns:
+            True if the client is valid, False otherwise.
+        """
+        try:
+            customer_service = client.get_service("CustomerService")
+            accessible = customer_service.list_accessible_customers()
+            return len(accessible.resource_names) > 0
+        except GoogleAdsException:
+            return False
+        except Exception:
+            return False
+
+
+# Global factory instance
+_factory: Optional[GoogleAdsClientFactory] = None
+
+
+def get_google_ads_client(
+    login_customer_id: Optional[str] = None,
+    force_refresh: bool = False,
+) -> GoogleAdsClient:
+    """Get a configured Google Ads client using the global factory.
+
+    This is the primary entry point for getting a Google Ads client.
+    The client is configured with authentication from the auth module
+    and is ready to use with the google-ads library.
+
+    Args:
+        login_customer_id: Customer ID to use for login (for MCC access).
+                         If not provided, uses the value from config.
+                         Format: "1234567890" (no dashes).
+        force_refresh: If True, force re-authentication via browser.
+
+    Returns:
+        A configured GoogleAdsClient instance ready for API calls.
+
+    Raises:
+        FileNotFoundError: If Google Ads config file is not found.
+        ValueError: If config is missing required fields.
+        GoogleAdsException: If client creation fails.
+
+    Example:
+        >>> client = get_google_ads_client()
+        >>>
+        >>> # List accessible customers
+        >>> customer_service = client.get_service("CustomerService")
+        >>> accessible = customer_service.list_accessible_customers()
+        >>>
+        >>> # Execute a GAQL query
+        >>> ga_service = client.get_service("GoogleAdsService")
+        >>> query = "SELECT campaign.id, campaign.name FROM campaign"
+        >>> response = ga_service.search(customer_id="1234567890", query=query)
+    """
+    global _factory
+
+    if _factory is None:
+        _factory = GoogleAdsClientFactory()
+
+    return _factory.get_client(
+        login_customer_id=login_customer_id,
+        force_refresh=force_refresh,
+    )
+
+
+def get_login_customer_id() -> Optional[str]:
+    """Gets the login_customer_id from the configuration.
+
+    Returns:
+        The login_customer_id if configured, None otherwise.
+    """
+    credentials_path = os.environ.get("GOOGLE_ADS_CREDENTIALS", DEFAULT_CREDENTIALS_PATH)
+
+    if not os.path.isfile(credentials_path):
+        return None
+
+    with open(credentials_path, "r", encoding="utf-8") as f:
+        config = yaml.safe_load(f)
+
+    return str(config.get("login_customer_id", "")).replace("-", "") or None
+
+
+def format_value(value: Any) -> Any:
+    """Formats a value from a Google Ads API response.
+
+    Converts protobuf messages and enums to JSON-serializable Python objects.
+
+    Args:
+        value: A value from the Google Ads API response.
+
+    Returns:
+        A JSON-serializable Python object.
+    """
+    if isinstance(value, proto.Message):
+        return proto.Message.to_dict(value)
+    elif isinstance(value, proto.Enum):
+        return value.name
+    else:
+        return value
+
+
+def format_error(exception: GoogleAdsException) -> str:
+    """Formats a GoogleAdsException into a readable error message.
+
+    Args:
+        exception: The GoogleAdsException to format.
+
+    Returns:
+        A formatted error message string.
+    """
+    errors = []
+    for error in exception.failure.errors:
+        errors.append(str(error))
+    return "\n".join(errors)
+
+
+def clean_customer_id(customer_id: str) -> str:
+    """Cleans a customer ID by removing dashes and whitespace.
+
+    Args:
+        customer_id: The customer ID to clean.
+
+    Returns:
+        The cleaned customer ID containing only digits.
+    """
+    return customer_id.replace("-", "").replace(" ", "").strip()
+
+
+def reset_client_factory() -> None:
+    """Reset the global client factory (useful for testing)."""
+    global _factory
+    _factory = None

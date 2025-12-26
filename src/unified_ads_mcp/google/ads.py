@@ -1,0 +1,441 @@
+"""Ad management tools for Google Ads API.
+
+This module provides MCP tools for managing Google Ads including
+listing, creating, updating, and deleting ads within ad groups.
+"""
+
+from typing import Any, Optional
+
+from google.ads.googleads.errors import GoogleAdsException
+from mcp.server.fastmcp import ToolError
+
+from ..server import mcp
+from .client import get_google_ads_client, clean_customer_id, format_error
+
+
+@mcp.tool()
+def google_list_ads(
+    customer_id: str,
+    ad_group_id: Optional[str] = None,
+    status: Optional[str] = None,
+    login_customer_id: Optional[str] = None,
+) -> list[dict[str, Any]]:
+    """Lists ads for a Google Ads customer with performance metrics.
+
+    Args:
+        customer_id: The Google Ads customer ID (digits only, no dashes).
+        ad_group_id: Optional ad group ID to filter ads.
+        status: Optional filter by status - ENABLED, PAUSED, or REMOVED.
+        login_customer_id: Optional MCC account ID if accessing through
+            a manager account.
+
+    Returns:
+        list[dict]: List of ads with:
+            - id: Ad ID
+            - ad_group_id: Parent ad group ID
+            - ad_group_name: Parent ad group name
+            - status: Ad status
+            - type: Ad type (RESPONSIVE_SEARCH_AD, etc.)
+            - final_urls: List of final URLs
+            - impressions: Total impressions
+            - clicks: Total clicks
+            - cost_micros: Total cost in micros
+            - conversions: Total conversions
+
+    Raises:
+        ToolError: If the API request fails.
+    """
+    try:
+        client = get_google_ads_client(login_customer_id=login_customer_id)
+        customer_id = clean_customer_id(customer_id)
+
+
+        query = """
+            SELECT
+                ad_group_ad.ad.id,
+                ad_group_ad.ad.type,
+                ad_group_ad.ad.final_urls,
+                ad_group_ad.status,
+                ad_group_ad.ad.responsive_search_ad.headlines,
+                ad_group_ad.ad.responsive_search_ad.descriptions,
+                ad_group.id,
+                ad_group.name,
+                campaign.id,
+                campaign.name,
+                metrics.impressions,
+                metrics.clicks,
+                metrics.cost_micros,
+                metrics.conversions
+            FROM ad_group_ad
+        """
+
+        conditions = []
+        if ad_group_id:
+            conditions.append(f"ad_group.id = {ad_group_id}")
+        if status:
+            conditions.append(f"ad_group_ad.status = '{status.upper()}'")
+
+        if conditions:
+            query += " WHERE " + " AND ".join(conditions)
+
+        query += " ORDER BY ad_group_ad.ad.id"
+
+        ga_service = client.get_service("GoogleAdsService")
+        response = ga_service.search_stream(
+            customer_id=customer_id,
+            query=query,
+        )
+
+        ads = []
+        for batch in response:
+            for row in batch.results:
+                ad_data = {
+                    "id": str(row.ad_group_ad.ad.id),
+                    "ad_group_id": str(row.ad_group.id),
+                    "ad_group_name": row.ad_group.name,
+                    "campaign_id": str(row.campaign.id),
+                    "campaign_name": row.campaign.name,
+                    "status": row.ad_group_ad.status.name,
+                    "type": row.ad_group_ad.ad.type_.name,
+                    "final_urls": list(row.ad_group_ad.ad.final_urls),
+                    "impressions": row.metrics.impressions,
+                    "clicks": row.metrics.clicks,
+                    "cost_micros": row.metrics.cost_micros,
+                    "conversions": row.metrics.conversions,
+                }
+
+                # Add RSA-specific fields if it's a responsive search ad
+                if row.ad_group_ad.ad.type_.name == "RESPONSIVE_SEARCH_AD":
+                    rsa = row.ad_group_ad.ad.responsive_search_ad
+                    ad_data["headlines"] = [h.text for h in rsa.headlines]
+                    ad_data["descriptions"] = [d.text for d in rsa.descriptions]
+
+                ads.append(ad_data)
+
+        return ads
+
+    except GoogleAdsException as e:
+        raise ToolError(format_error(e)) from e
+
+
+@mcp.tool()
+def google_get_ad(
+    customer_id: str,
+    ad_group_id: str,
+    ad_id: str,
+    login_customer_id: Optional[str] = None,
+) -> dict[str, Any]:
+    """Gets detailed information about a specific ad.
+
+    Args:
+        customer_id: The Google Ads customer ID (digits only, no dashes).
+        ad_group_id: The ad group ID containing the ad.
+        ad_id: The ad ID to retrieve.
+        login_customer_id: Optional MCC account ID if accessing through
+            a manager account.
+
+    Returns:
+        dict: Ad details including:
+            - id: Ad ID
+            - ad_group_id: Parent ad group ID
+            - status: Ad status
+            - type: Ad type
+            - final_urls: List of final URLs
+            - headlines: List of headlines (for RSA)
+            - descriptions: List of descriptions (for RSA)
+            - impressions, clicks, cost_micros, conversions: Metrics
+
+    Raises:
+        ToolError: If the ad is not found or API request fails.
+    """
+    try:
+        client = get_google_ads_client(login_customer_id=login_customer_id)
+        customer_id = clean_customer_id(customer_id)
+
+
+        query = f"""
+            SELECT
+                ad_group_ad.ad.id,
+                ad_group_ad.ad.type,
+                ad_group_ad.ad.final_urls,
+                ad_group_ad.ad.final_mobile_urls,
+                ad_group_ad.ad.tracking_url_template,
+                ad_group_ad.status,
+                ad_group_ad.ad.responsive_search_ad.headlines,
+                ad_group_ad.ad.responsive_search_ad.descriptions,
+                ad_group_ad.ad.responsive_search_ad.path1,
+                ad_group_ad.ad.responsive_search_ad.path2,
+                ad_group.id,
+                ad_group.name,
+                campaign.id,
+                campaign.name,
+                metrics.impressions,
+                metrics.clicks,
+                metrics.cost_micros,
+                metrics.conversions,
+                metrics.ctr,
+                metrics.average_cpc
+            FROM ad_group_ad
+            WHERE ad_group.id = {ad_group_id} AND ad_group_ad.ad.id = {ad_id}
+        """
+
+        ga_service = client.get_service("GoogleAdsService")
+        response = ga_service.search_stream(
+            customer_id=customer_id,
+            query=query,
+        )
+
+        for batch in response:
+            for row in batch.results:
+                ad_data = {
+                    "id": str(row.ad_group_ad.ad.id),
+                    "ad_group_id": str(row.ad_group.id),
+                    "ad_group_name": row.ad_group.name,
+                    "campaign_id": str(row.campaign.id),
+                    "campaign_name": row.campaign.name,
+                    "status": row.ad_group_ad.status.name,
+                    "type": row.ad_group_ad.ad.type_.name,
+                    "final_urls": list(row.ad_group_ad.ad.final_urls),
+                    "final_mobile_urls": list(row.ad_group_ad.ad.final_mobile_urls),
+                    "tracking_url_template": row.ad_group_ad.ad.tracking_url_template or None,
+                    "impressions": row.metrics.impressions,
+                    "clicks": row.metrics.clicks,
+                    "cost_micros": row.metrics.cost_micros,
+                    "conversions": row.metrics.conversions,
+                    "ctr": row.metrics.ctr,
+                    "average_cpc": row.metrics.average_cpc,
+                }
+
+                # Add RSA-specific fields
+                if row.ad_group_ad.ad.type_.name == "RESPONSIVE_SEARCH_AD":
+                    rsa = row.ad_group_ad.ad.responsive_search_ad
+                    ad_data["headlines"] = [
+                        {"text": h.text, "pinned_field": h.pinned_field.name if h.pinned_field else None}
+                        for h in rsa.headlines
+                    ]
+                    ad_data["descriptions"] = [
+                        {"text": d.text, "pinned_field": d.pinned_field.name if d.pinned_field else None}
+                        for d in rsa.descriptions
+                    ]
+                    ad_data["path1"] = rsa.path1 or None
+                    ad_data["path2"] = rsa.path2 or None
+
+                return ad_data
+
+        raise ToolError(f"Ad {ad_id} not found in ad group {ad_group_id}")
+
+    except GoogleAdsException as e:
+        raise ToolError(format_error(e)) from e
+
+
+@mcp.tool()
+def google_create_responsive_search_ad(
+    customer_id: str,
+    ad_group_id: str,
+    headlines: list[str],
+    descriptions: list[str],
+    final_urls: list[str],
+    path1: Optional[str] = None,
+    path2: Optional[str] = None,
+    status: str = "ENABLED",
+    login_customer_id: Optional[str] = None,
+) -> dict[str, Any]:
+    """Creates a new Responsive Search Ad (RSA).
+
+    Responsive Search Ads automatically test different combinations
+    of headlines and descriptions to find the best performing ads.
+
+    Args:
+        customer_id: The Google Ads customer ID (digits only, no dashes).
+        ad_group_id: The ad group ID to add the ad to.
+        headlines: List of headline texts (3-15 required, max 30 chars each).
+        descriptions: List of description texts (2-4 required, max 90 chars each).
+        final_urls: List of final landing page URLs.
+        path1: Optional display path 1 (max 15 chars).
+        path2: Optional display path 2 (max 15 chars, requires path1).
+        status: Initial status - ENABLED (default) or PAUSED.
+        login_customer_id: Optional MCC account ID if accessing through
+            a manager account.
+
+    Returns:
+        dict: Created ad details:
+            - ad_id: The new ad ID
+            - ad_resource_name: Full resource name
+            - status: Creation status
+
+    Raises:
+        ToolError: If validation fails or API request fails.
+    """
+    # Validate inputs
+    if len(headlines) < 3:
+        raise ToolError("At least 3 headlines are required for Responsive Search Ads")
+    if len(headlines) > 15:
+        raise ToolError("Maximum 15 headlines allowed for Responsive Search Ads")
+    if len(descriptions) < 2:
+        raise ToolError("At least 2 descriptions are required for Responsive Search Ads")
+    if len(descriptions) > 4:
+        raise ToolError("Maximum 4 descriptions allowed for Responsive Search Ads")
+    if not final_urls:
+        raise ToolError("At least one final URL is required")
+
+    try:
+        client = get_google_ads_client(login_customer_id=login_customer_id)
+        customer_id = clean_customer_id(customer_id)
+
+
+        ad_group_ad_service = client.get_service("AdGroupAdService")
+        ad_group_ad_operation = client.get_type("AdGroupAdOperation")
+        ad_group_ad = ad_group_ad_operation.create
+
+        ad_group_ad.ad_group = f"customers/{customer_id}/adGroups/{ad_group_id}"
+        ad_group_ad.status = client.enums.AdGroupAdStatusEnum[status.upper()]
+
+        # Set up the responsive search ad
+        ad = ad_group_ad.ad
+        ad.final_urls.extend(final_urls)
+
+        rsa = ad.responsive_search_ad
+
+        # Add headlines
+        for headline_text in headlines:
+            headline = client.get_type("AdTextAsset")
+            headline.text = headline_text
+            rsa.headlines.append(headline)
+
+        # Add descriptions
+        for desc_text in descriptions:
+            description = client.get_type("AdTextAsset")
+            description.text = desc_text
+            rsa.descriptions.append(description)
+
+        # Set display paths
+        if path1:
+            rsa.path1 = path1
+        if path2:
+            rsa.path2 = path2
+
+        response = ad_group_ad_service.mutate_ad_group_ads(
+            customer_id=customer_id,
+            operations=[ad_group_ad_operation],
+        )
+
+        resource_name = response.results[0].resource_name
+        # Extract ad ID from resource name: customers/{customer_id}/adGroupAds/{ad_group_id}~{ad_id}
+        ad_id = resource_name.split("~")[-1]
+
+        return {
+            "ad_id": ad_id,
+            "ad_resource_name": resource_name,
+            "status": "created",
+        }
+
+    except GoogleAdsException as e:
+        raise ToolError(format_error(e)) from e
+
+
+@mcp.tool()
+def google_update_ad(
+    customer_id: str,
+    ad_group_id: str,
+    ad_id: str,
+    status: str,
+    login_customer_id: Optional[str] = None,
+) -> dict[str, Any]:
+    """Updates an ad's status.
+
+    Note: Most ad properties cannot be updated after creation.
+    To change headlines, descriptions, or URLs, remove the ad
+    and create a new one.
+
+    Args:
+        customer_id: The Google Ads customer ID (digits only, no dashes).
+        ad_group_id: The ad group ID containing the ad.
+        ad_id: The ad ID to update.
+        status: New status - ENABLED, PAUSED, or REMOVED.
+        login_customer_id: Optional MCC account ID if accessing through
+            a manager account.
+
+    Returns:
+        dict: Updated ad details:
+            - ad_resource_name: Full resource name
+            - status: "updated"
+
+    Raises:
+        ToolError: If the API request fails.
+    """
+    try:
+        client = get_google_ads_client(login_customer_id=login_customer_id)
+        customer_id = clean_customer_id(customer_id)
+
+
+        ad_group_ad_service = client.get_service("AdGroupAdService")
+        ad_group_ad_operation = client.get_type("AdGroupAdOperation")
+        ad_group_ad = ad_group_ad_operation.update
+
+        ad_group_ad.resource_name = f"customers/{customer_id}/adGroupAds/{ad_group_id}~{ad_id}"
+        ad_group_ad.status = client.enums.AdGroupAdStatusEnum[status.upper()]
+
+        ad_group_ad_operation.update_mask.paths.append("status")
+
+        response = ad_group_ad_service.mutate_ad_group_ads(
+            customer_id=customer_id,
+            operations=[ad_group_ad_operation],
+        )
+
+        return {
+            "ad_resource_name": response.results[0].resource_name,
+            "status": "updated",
+        }
+
+    except GoogleAdsException as e:
+        raise ToolError(format_error(e)) from e
+
+
+@mcp.tool()
+def google_delete_ad(
+    customer_id: str,
+    ad_group_id: str,
+    ad_id: str,
+    login_customer_id: Optional[str] = None,
+) -> dict[str, Any]:
+    """Removes an ad.
+
+    Note: This sets the ad status to REMOVED. The ad data
+    is retained and can still be queried but cannot be reactivated.
+
+    Args:
+        customer_id: The Google Ads customer ID (digits only, no dashes).
+        ad_group_id: The ad group ID containing the ad.
+        ad_id: The ad ID to remove.
+        login_customer_id: Optional MCC account ID if accessing through
+            a manager account.
+
+    Returns:
+        dict: Removal status:
+            - ad_resource_name: Full resource name
+            - status: "removed"
+
+    Raises:
+        ToolError: If the API request fails.
+    """
+    try:
+        client = get_google_ads_client(login_customer_id=login_customer_id)
+        customer_id = clean_customer_id(customer_id)
+
+
+        ad_group_ad_service = client.get_service("AdGroupAdService")
+        ad_group_ad_operation = client.get_type("AdGroupAdOperation")
+        ad_group_ad_operation.remove = f"customers/{customer_id}/adGroupAds/{ad_group_id}~{ad_id}"
+
+        response = ad_group_ad_service.mutate_ad_group_ads(
+            customer_id=customer_id,
+            operations=[ad_group_ad_operation],
+        )
+
+        return {
+            "ad_resource_name": response.results[0].resource_name,
+            "status": "removed",
+        }
+
+    except GoogleAdsException as e:
+        raise ToolError(format_error(e)) from e
