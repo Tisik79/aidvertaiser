@@ -223,6 +223,35 @@ def format_value(value: Any) -> Any:
         return value
 
 
+def get_enum_name(client: GoogleAdsClient, enum_path: str, value: Any) -> str:
+    """Convert an enum value (int or enum object) to its name.
+
+    Args:
+        client: The GoogleAdsClient for accessing enum types.
+        enum_path: The enum path like "CampaignStatusEnum" or "AdvertisingChannelTypeEnum".
+        value: The enum value (int) or enum object.
+
+    Returns:
+        The enum name as a string.
+    """
+    if hasattr(value, 'name'):
+        return value.name
+
+    # It's an integer, need to convert using protobuf EnumTypeWrapper
+    try:
+        enum_type = getattr(client.enums, enum_path)
+        # Get the inner enum class (e.g., CampaignStatusEnum.CampaignStatus)
+        inner_name = enum_path.replace("Enum", "")
+        inner_enum = getattr(enum_type, inner_name, None)
+        if inner_enum and hasattr(inner_enum, 'Name'):
+            # Protobuf enums use .Name(value) method
+            return inner_enum.Name(value)
+        # Fallback: just return the int as string
+        return str(value)
+    except Exception:
+        return str(value)
+
+
 def format_error(exception: GoogleAdsException) -> str:
     """Formats a GoogleAdsException into a readable error message.
 

@@ -10,7 +10,7 @@ from google.ads.googleads.errors import GoogleAdsException
 from mcp.server.fastmcp.exceptions import ToolError
 
 from ..server import mcp
-from .client import get_google_ads_client, clean_customer_id, format_error, get_default_customer_id
+from .client import get_google_ads_client, clean_customer_id, format_error, get_default_customer_id, get_enum_name
 
 
 @mcp.tool()
@@ -110,8 +110,8 @@ def google_list_campaigns(
                 campaigns.append({
                     "id": str(row.campaign.id),
                     "name": row.campaign.name,
-                    "status": row.campaign.status.name,
-                    "channel_type": row.campaign.advertising_channel_type.name,
+                    "status": get_enum_name(client, "CampaignStatusEnum", row.campaign.status),
+                    "channel_type": get_enum_name(client, "AdvertisingChannelTypeEnum", row.campaign.advertising_channel_type),
                     "budget_micros": row.campaign_budget.amount_micros,
                     "start_date": row.campaign.start_date or None,
                     "end_date": row.campaign.end_date or None,
@@ -205,11 +205,11 @@ def google_get_campaign(
                 return {
                     "id": str(row.campaign.id),
                     "name": row.campaign.name,
-                    "status": row.campaign.status.name,
-                    "channel_type": row.campaign.advertising_channel_type.name,
-                    "channel_sub_type": row.campaign.advertising_channel_sub_type.name,
+                    "status": get_enum_name(client, "CampaignStatusEnum", row.campaign.status),
+                    "channel_type": get_enum_name(client, "AdvertisingChannelTypeEnum", row.campaign.advertising_channel_type),
+                    "channel_sub_type": get_enum_name(client, "AdvertisingChannelSubTypeEnum", row.campaign.advertising_channel_sub_type),
                     "budget_micros": row.campaign_budget.amount_micros,
-                    "budget_delivery_method": row.campaign_budget.delivery_method.name,
+                    "budget_delivery_method": get_enum_name(client, "BudgetDeliveryMethodEnum", row.campaign_budget.delivery_method),
                     "start_date": row.campaign.start_date or None,
                     "end_date": row.campaign.end_date or None,
                     "target_google_search": row.campaign.network_settings.target_google_search,

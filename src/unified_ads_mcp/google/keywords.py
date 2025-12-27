@@ -10,7 +10,7 @@ from google.ads.googleads.errors import GoogleAdsException
 from mcp.server.fastmcp.exceptions import ToolError
 
 from ..server import mcp
-from .client import get_google_ads_client, clean_customer_id, format_error, get_default_customer_id
+from .client import get_google_ads_client, clean_customer_id, format_error, get_default_customer_id, get_enum_name
 
 
 @mcp.tool()
@@ -100,8 +100,8 @@ def google_list_keywords(
                     "campaign_id": str(row.campaign.id),
                     "campaign_name": row.campaign.name,
                     "keyword_text": row.ad_group_criterion.keyword.text,
-                    "match_type": row.ad_group_criterion.keyword.match_type.name,
-                    "status": row.ad_group_criterion.status.name,
+                    "match_type": get_enum_name(client, "KeywordMatchTypeEnum", row.ad_group_criterion.keyword.match_type),
+                    "status": get_enum_name(client, "AdGroupCriterionStatusEnum", row.ad_group_criterion.status),
                     "cpc_bid_micros": row.ad_group_criterion.cpc_bid_micros,
                     "quality_score": row.ad_group_criterion.quality_info.quality_score or None,
                     "impressions": row.metrics.impressions,
@@ -199,14 +199,14 @@ def google_get_keyword(
                     "campaign_id": str(row.campaign.id),
                     "campaign_name": row.campaign.name,
                     "keyword_text": row.ad_group_criterion.keyword.text,
-                    "match_type": row.ad_group_criterion.keyword.match_type.name,
-                    "status": row.ad_group_criterion.status.name,
+                    "match_type": get_enum_name(client, "KeywordMatchTypeEnum", row.ad_group_criterion.keyword.match_type),
+                    "status": get_enum_name(client, "AdGroupCriterionStatusEnum", row.ad_group_criterion.status),
                     "cpc_bid_micros": row.ad_group_criterion.cpc_bid_micros,
                     "final_urls": list(row.ad_group_criterion.final_urls),
                     "quality_score": quality_info.quality_score or None,
-                    "creative_quality_score": quality_info.creative_quality_score.name if quality_info.creative_quality_score else None,
-                    "post_click_quality_score": quality_info.post_click_quality_score.name if quality_info.post_click_quality_score else None,
-                    "search_predicted_ctr": quality_info.search_predicted_ctr.name if quality_info.search_predicted_ctr else None,
+                    "creative_quality_score": get_enum_name(client, "QualityScoreBucketEnum", quality_info.creative_quality_score) if quality_info.creative_quality_score else None,
+                    "post_click_quality_score": get_enum_name(client, "QualityScoreBucketEnum", quality_info.post_click_quality_score) if quality_info.post_click_quality_score else None,
+                    "search_predicted_ctr": get_enum_name(client, "QualityScoreBucketEnum", quality_info.search_predicted_ctr) if quality_info.search_predicted_ctr else None,
                     "impressions": row.metrics.impressions,
                     "clicks": row.metrics.clicks,
                     "cost_micros": row.metrics.cost_micros,

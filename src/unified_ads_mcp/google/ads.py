@@ -10,7 +10,7 @@ from google.ads.googleads.errors import GoogleAdsException
 from mcp.server.fastmcp.exceptions import ToolError
 
 from ..server import mcp
-from .client import get_google_ads_client, clean_customer_id, format_error, get_default_customer_id
+from .client import get_google_ads_client, clean_customer_id, format_error, get_default_customer_id, get_enum_name
 
 
 @mcp.tool()
@@ -91,14 +91,15 @@ def google_list_ads(
         ads = []
         for batch in response:
             for row in batch.results:
+                ad_type = get_enum_name(client, "AdTypeEnum", row.ad_group_ad.ad.type_)
                 ad_data = {
                     "id": str(row.ad_group_ad.ad.id),
                     "ad_group_id": str(row.ad_group.id),
                     "ad_group_name": row.ad_group.name,
                     "campaign_id": str(row.campaign.id),
                     "campaign_name": row.campaign.name,
-                    "status": row.ad_group_ad.status.name,
-                    "type": row.ad_group_ad.ad.type_.name,
+                    "status": get_enum_name(client, "AdGroupAdStatusEnum", row.ad_group_ad.status),
+                    "type": ad_type,
                     "final_urls": list(row.ad_group_ad.ad.final_urls),
                     "impressions": row.metrics.impressions,
                     "clicks": row.metrics.clicks,
@@ -107,7 +108,7 @@ def google_list_ads(
                 }
 
                 # Add RSA-specific fields if it's a responsive search ad
-                if row.ad_group_ad.ad.type_.name == "RESPONSIVE_SEARCH_AD":
+                if ad_type == "RESPONSIVE_SEARCH_AD":
                     rsa = row.ad_group_ad.ad.responsive_search_ad
                     ad_data["headlines"] = [h.text for h in rsa.headlines]
                     ad_data["descriptions"] = [d.text for d in rsa.descriptions]
@@ -191,14 +192,15 @@ def google_get_ad(
 
         for batch in response:
             for row in batch.results:
+                ad_type = get_enum_name(client, "AdTypeEnum", row.ad_group_ad.ad.type_)
                 ad_data = {
                     "id": str(row.ad_group_ad.ad.id),
                     "ad_group_id": str(row.ad_group.id),
                     "ad_group_name": row.ad_group.name,
                     "campaign_id": str(row.campaign.id),
                     "campaign_name": row.campaign.name,
-                    "status": row.ad_group_ad.status.name,
-                    "type": row.ad_group_ad.ad.type_.name,
+                    "status": get_enum_name(client, "AdGroupAdStatusEnum", row.ad_group_ad.status),
+                    "type": ad_type,
                     "final_urls": list(row.ad_group_ad.ad.final_urls),
                     "final_mobile_urls": list(row.ad_group_ad.ad.final_mobile_urls),
                     "tracking_url_template": row.ad_group_ad.ad.tracking_url_template or None,
@@ -211,14 +213,14 @@ def google_get_ad(
                 }
 
                 # Add RSA-specific fields
-                if row.ad_group_ad.ad.type_.name == "RESPONSIVE_SEARCH_AD":
+                if ad_type == "RESPONSIVE_SEARCH_AD":
                     rsa = row.ad_group_ad.ad.responsive_search_ad
                     ad_data["headlines"] = [
-                        {"text": h.text, "pinned_field": h.pinned_field.name if h.pinned_field else None}
+                        {"text": h.text, "pinned_field": get_enum_name(client, "ServedAssetFieldTypeEnum", h.pinned_field) if h.pinned_field else None}
                         for h in rsa.headlines
                     ]
                     ad_data["descriptions"] = [
-                        {"text": d.text, "pinned_field": d.pinned_field.name if d.pinned_field else None}
+                        {"text": d.text, "pinned_field": get_enum_name(client, "ServedAssetFieldTypeEnum", d.pinned_field) if d.pinned_field else None}
                         for d in rsa.descriptions
                     ]
                     ad_data["path1"] = rsa.path1 or None

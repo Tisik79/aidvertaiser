@@ -10,7 +10,7 @@ from google.ads.googleads.errors import GoogleAdsException
 from mcp.server.fastmcp.exceptions import ToolError
 
 from ..server import mcp
-from .client import get_google_ads_client, clean_customer_id, format_error, get_default_customer_id
+from .client import get_google_ads_client, clean_customer_id, format_error, get_default_customer_id, get_enum_name
 
 
 @mcp.tool()
@@ -90,8 +90,8 @@ def google_list_ad_groups(
                 ad_groups.append({
                     "id": str(row.ad_group.id),
                     "name": row.ad_group.name,
-                    "status": row.ad_group.status.name,
-                    "type": row.ad_group.type_.name,
+                    "status": get_enum_name(client, "AdGroupStatusEnum", row.ad_group.status),
+                    "type": get_enum_name(client, "AdGroupTypeEnum", row.ad_group.type_),
                     "cpc_bid_micros": row.ad_group.cpc_bid_micros,
                     "campaign_id": str(row.campaign.id),
                     "campaign_name": row.campaign.name,
@@ -179,8 +179,8 @@ def google_get_ad_group(
                 return {
                     "id": str(row.ad_group.id),
                     "name": row.ad_group.name,
-                    "status": row.ad_group.status.name,
-                    "type": row.ad_group.type_.name,
+                    "status": get_enum_name(client, "AdGroupStatusEnum", row.ad_group.status),
+                    "type": get_enum_name(client, "AdGroupTypeEnum", row.ad_group.type_),
                     "cpc_bid_micros": row.ad_group.cpc_bid_micros,
                     "cpm_bid_micros": row.ad_group.cpm_bid_micros,
                     "effective_target_cpa_micros": row.ad_group.effective_target_cpa_micros,

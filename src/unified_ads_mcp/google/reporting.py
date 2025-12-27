@@ -12,7 +12,7 @@ from mcp.server.fastmcp.exceptions import ToolError
 import proto
 
 from ..server import mcp
-from .client import get_google_ads_client, clean_customer_id, format_error, format_value, get_default_customer_id
+from .client import get_google_ads_client, clean_customer_id, format_error, format_value, get_default_customer_id, get_enum_name
 
 
 def _preprocess_gaql(query: str) -> str:
@@ -204,8 +204,8 @@ def google_get_campaign_performance(
                 results.append({
                     "campaign_id": str(row.campaign.id),
                     "campaign_name": row.campaign.name,
-                    "status": row.campaign.status.name,
-                    "channel_type": row.campaign.advertising_channel_type.name,
+                    "status": get_enum_name(client, "CampaignStatusEnum", row.campaign.status),
+                    "channel_type": get_enum_name(client, "AdvertisingChannelTypeEnum", row.campaign.advertising_channel_type),
                     "impressions": row.metrics.impressions,
                     "clicks": row.metrics.clicks,
                     "cost_micros": row.metrics.cost_micros,
@@ -307,8 +307,8 @@ def google_get_keyword_performance(
                 results.append({
                     "keyword_id": str(row.ad_group_criterion.criterion_id),
                     "keyword_text": row.ad_group_criterion.keyword.text,
-                    "match_type": row.ad_group_criterion.keyword.match_type.name,
-                    "status": row.ad_group_criterion.status.name,
+                    "match_type": get_enum_name(client, "KeywordMatchTypeEnum", row.ad_group_criterion.keyword.match_type),
+                    "status": get_enum_name(client, "AdGroupCriterionStatusEnum", row.ad_group_criterion.status),
                     "quality_score": row.ad_group_criterion.quality_info.quality_score or None,
                     "campaign_id": str(row.campaign.id),
                     "campaign_name": row.campaign.name,
@@ -404,8 +404,8 @@ def google_get_ad_performance(
             for row in batch.results:
                 results.append({
                     "ad_id": str(row.ad_group_ad.ad.id),
-                    "ad_type": row.ad_group_ad.ad.type_.name,
-                    "status": row.ad_group_ad.status.name,
+                    "ad_type": get_enum_name(client, "AdTypeEnum", row.ad_group_ad.ad.type_),
+                    "status": get_enum_name(client, "AdGroupAdStatusEnum", row.ad_group_ad.status),
                     "campaign_id": str(row.campaign.id),
                     "campaign_name": row.campaign.name,
                     "ad_group_id": str(row.ad_group.id),
@@ -504,7 +504,7 @@ def google_get_search_terms_report(
                 results.append({
                     "search_term": row.search_term_view.search_term,
                     "keyword_text": row.ad_group_criterion.keyword.text,
-                    "match_type": row.ad_group_criterion.keyword.match_type.name,
+                    "match_type": get_enum_name(client, "KeywordMatchTypeEnum", row.ad_group_criterion.keyword.match_type),
                     "campaign_id": str(row.campaign.id),
                     "campaign_name": row.campaign.name,
                     "ad_group_id": str(row.ad_group.id),
