@@ -21,6 +21,7 @@ Configuration:
 import os
 import sys
 import time
+from datetime import datetime, timezone, timedelta
 from pathlib import Path
 from typing import Optional
 
@@ -158,6 +159,15 @@ class GoogleAdsAuth:
             # Try cached credentials first
             cached = load_token("google")
             if cached and self._is_token_valid(cached):
+                # Restore expiry if available, otherwise assume expired to force refresh
+                expiry = None
+                if cached.get("expiry"):
+                    expiry = datetime.fromtimestamp(cached["expiry"], tz=timezone.utc)
+                elif cached.get("created_at"):
+                    # No expiry stored - assume 1 hour lifetime, treat as expired if older
+                    created = datetime.fromtimestamp(cached["created_at"], tz=timezone.utc)
+                    expiry = created + timedelta(hours=1)
+
                 self._credentials = Credentials(
                     token=cached.get("access_token"),
                     refresh_token=cached.get("refresh_token"),
@@ -165,6 +175,7 @@ class GoogleAdsAuth:
                     client_id=self.client_id,
                     client_secret=self.client_secret,
                     scopes=[GOOGLE_ADS_SCOPE],
+                    expiry=expiry,
                 )
 
                 # Refresh if access token is expired but we have refresh token
@@ -297,11 +308,15 @@ class GoogleAdsAuth:
     def _save_credentials(self) -> None:
         """Save current credentials to persistent cache."""
         if self._credentials:
-            save_token("google", {
+            token_data = {
                 "access_token": self._credentials.token,
                 "refresh_token": self._credentials.refresh_token,
                 "created_at": int(time.time()),
-            })
+            }
+            # Save expiry if available
+            if self._credentials.expiry:
+                token_data["expiry"] = self._credentials.expiry.timestamp()
+            save_token("google", token_data)
 
     def _is_token_valid(self, token_data: dict) -> bool:
         """Check if cached token data is potentially valid.

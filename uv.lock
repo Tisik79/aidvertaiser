@@ -1994,7 +1994,7 @@ dependencies = [
 requires-dist = [
     { name = "facebook-business", specifier = ">=22.0.0" },
     { name = "fastmcp", specifier = ">=2.14.1" },
-    { name = "google-ads", specifier = ">=28.4.0" },
+    { name = "google-ads", specifier = ">=28.4.1" },
     { name = "httpx", specifier = ">=0.28.0" },
     { name = "python-dotenv", specifier = ">=1.0.0" },
     { name = "pyyaml", specifier = ">=6.0" },
