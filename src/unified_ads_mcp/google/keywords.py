@@ -10,7 +10,7 @@ from google.ads.googleads.errors import GoogleAdsException
 from mcp.server.fastmcp.exceptions import ToolError
 
 from ..server import mcp
-from .client import get_google_ads_client, clean_customer_id, format_error, get_default_customer_id, get_enum_name
+from .client import get_google_ads_client, clean_customer_id, format_error, get_default_customer_id, get_enum_name, get_enum_value
 
 
 @mcp.tool()
@@ -273,10 +273,10 @@ def google_add_keywords(
             criterion = operation.create
 
             criterion.ad_group = f"customers/{customer_id}/adGroups/{ad_group_id}"
-            criterion.status = client.enums.AdGroupCriterionStatusEnum[status.upper()]
+            criterion.status = get_enum_value(client, "AdGroupCriterionStatusEnum", status)
 
             criterion.keyword.text = keyword_text
-            criterion.keyword.match_type = client.enums.KeywordMatchTypeEnum[match_type.upper()]
+            criterion.keyword.match_type = get_enum_value(client, "KeywordMatchTypeEnum", match_type)
 
             if cpc_bid_micros is not None:
                 criterion.cpc_bid_micros = cpc_bid_micros
@@ -353,7 +353,7 @@ def google_update_keyword(
         field_mask = []
 
         if status is not None:
-            criterion.status = client.enums.AdGroupCriterionStatusEnum[status.upper()]
+            criterion.status = get_enum_value(client, "AdGroupCriterionStatusEnum", status)
             field_mask.append("status")
 
         if cpc_bid_micros is not None:
@@ -489,7 +489,7 @@ def google_add_negative_keywords(
             criterion.negative = True
 
             criterion.keyword.text = keyword_text
-            criterion.keyword.match_type = client.enums.KeywordMatchTypeEnum[match_type.upper()]
+            criterion.keyword.match_type = get_enum_value(client, "KeywordMatchTypeEnum", match_type)
 
             operations.append(operation)
 

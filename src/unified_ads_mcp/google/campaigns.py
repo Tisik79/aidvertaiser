@@ -10,7 +10,7 @@ from google.ads.googleads.errors import GoogleAdsException
 from mcp.server.fastmcp.exceptions import ToolError
 
 from ..server import mcp
-from .client import get_google_ads_client, clean_customer_id, format_error, get_default_customer_id, get_enum_name
+from .client import get_google_ads_client, clean_customer_id, format_error, get_default_customer_id, get_enum_name, get_enum_value
 
 
 @mcp.tool()
@@ -300,10 +300,10 @@ def google_create_campaign(
         campaign = campaign_operation.create
         campaign.name = name
         campaign.campaign_budget = budget_resource_name
-        campaign.advertising_channel_type = client.enums.AdvertisingChannelTypeEnum[
-            channel_type.upper()
-        ]
-        campaign.status = client.enums.CampaignStatusEnum[status.upper()]
+        campaign.advertising_channel_type = get_enum_value(
+            client, "AdvertisingChannelTypeEnum", channel_type
+        )
+        campaign.status = get_enum_value(client, "CampaignStatusEnum", status)
 
         if start_date:
             campaign.start_date = start_date.replace("-", "")
@@ -380,7 +380,7 @@ def google_update_campaign(
             field_mask.append("name")
 
         if status is not None:
-            campaign.status = client.enums.CampaignStatusEnum[status.upper()]
+            campaign.status = get_enum_value(client, "CampaignStatusEnum", status)
             field_mask.append("status")
 
         if start_date is not None:

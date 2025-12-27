@@ -10,7 +10,7 @@ from google.ads.googleads.errors import GoogleAdsException
 from mcp.server.fastmcp.exceptions import ToolError
 
 from ..server import mcp
-from .client import get_google_ads_client, clean_customer_id, format_error, get_default_customer_id, get_enum_name
+from .client import get_google_ads_client, clean_customer_id, format_error, get_default_customer_id, get_enum_name, get_enum_value
 
 
 @mcp.tool()
@@ -296,7 +296,7 @@ def google_create_responsive_search_ad(
         ad_group_ad = ad_group_ad_operation.create
 
         ad_group_ad.ad_group = f"customers/{customer_id}/adGroups/{ad_group_id}"
-        ad_group_ad.status = client.enums.AdGroupAdStatusEnum[status.upper()]
+        ad_group_ad.status = get_enum_value(client, "AdGroupAdStatusEnum", status)
 
         # Set up the responsive search ad
         ad = ad_group_ad.ad
@@ -383,7 +383,7 @@ def google_update_ad(
         ad_group_ad = ad_group_ad_operation.update
 
         ad_group_ad.resource_name = f"customers/{customer_id}/adGroupAds/{ad_group_id}~{ad_id}"
-        ad_group_ad.status = client.enums.AdGroupAdStatusEnum[status.upper()]
+        ad_group_ad.status = get_enum_value(client, "AdGroupAdStatusEnum", status)
 
         ad_group_ad_operation.update_mask.paths.append("status")
 

@@ -10,7 +10,7 @@ from google.ads.googleads.errors import GoogleAdsException
 from mcp.server.fastmcp.exceptions import ToolError
 
 from ..server import mcp
-from .client import get_google_ads_client, clean_customer_id, format_error, get_default_customer_id, get_enum_name
+from .client import get_google_ads_client, clean_customer_id, format_error, get_default_customer_id, get_enum_name, get_enum_value
 
 
 @mcp.tool()
@@ -248,8 +248,8 @@ def google_create_ad_group(
 
         ad_group.name = name
         ad_group.campaign = f"customers/{customer_id}/campaigns/{campaign_id}"
-        ad_group.status = client.enums.AdGroupStatusEnum[status.upper()]
-        ad_group.type_ = client.enums.AdGroupTypeEnum[ad_group_type.upper()]
+        ad_group.status = get_enum_value(client, "AdGroupStatusEnum", status)
+        ad_group.type_ = get_enum_value(client, "AdGroupTypeEnum", ad_group_type)
         ad_group.cpc_bid_micros = cpc_bid_micros
 
         response = ad_group_service.mutate_ad_groups(
@@ -314,7 +314,7 @@ def google_update_ad_group(
             field_mask.append("name")
 
         if status is not None:
-            ad_group.status = client.enums.AdGroupStatusEnum[status.upper()]
+            ad_group.status = get_enum_value(client, "AdGroupStatusEnum", status)
             field_mask.append("status")
 
         if cpc_bid_micros is not None:

@@ -252,6 +252,25 @@ def get_enum_name(client: GoogleAdsClient, enum_path: str, value: Any) -> str:
         return str(value)
 
 
+def get_enum_value(client: GoogleAdsClient, enum_path: str, name: str) -> Any:
+    """Convert an enum name to its protobuf enum value.
+
+    Args:
+        client: The GoogleAdsClient for accessing enum types.
+        enum_path: The enum path like "CampaignStatusEnum" or "AdvertisingChannelTypeEnum".
+        name: The enum name as a string (e.g., "ENABLED", "SEARCH").
+
+    Returns:
+        The protobuf enum value that can be assigned to message fields.
+    """
+    try:
+        enum_type = getattr(client.enums, enum_path)
+        # Access the enum value as an attribute (e.g., CampaignStatusEnum.ENABLED)
+        return getattr(enum_type, name.upper())
+    except AttributeError:
+        raise ValueError(f"Invalid enum value '{name}' for {enum_path}")
+
+
 def format_error(exception: GoogleAdsException) -> str:
     """Formats a GoogleAdsException into a readable error message.
 
