@@ -44,6 +44,7 @@ async def meta_upload_image(
     access_token: Optional[str] = None,
     image_url: Optional[str] = None,
     file: Optional[str] = None,
+    file_path: Optional[str] = None,
     name: Optional[str] = None
 ) -> dict:
     """Upload an image to use in Meta Ads creatives.
@@ -58,6 +59,7 @@ async def meta_upload_image(
         image_url: Direct URL to an image to fetch and upload.
         file: Base64-encoded image data or data URL
             (e.g., "data:image/png;base64,iVBORw0KG...").
+        file_path: Local file path to an image (e.g., "/home/user/image.jpg").
         name: Optional name for the image (default: auto-generated).
 
     Returns:
@@ -69,13 +71,13 @@ async def meta_upload_image(
             - images: Full image data including URL
 
     Note:
-        You must provide either image_url OR file, not both.
+        Provide ONE of: image_url, file (base64), or file_path.
 
     Example:
         >>> result = await meta_upload_image(
         ...     account_id="act_123456789",
-        ...     image_url="https://example.com/product-image.jpg",
-        ...     name="Summer Sale Hero"
+        ...     file_path="/home/user/images/product.jpg",
+        ...     name="Product Image"
         ... )
         >>> image_hash = result["image_hash"]
         >>> # Now use image_hash in meta_create_creative()
@@ -84,8 +86,8 @@ async def meta_upload_image(
     if not account_id:
         return {"error": {"message": "account_id is required - configure default_account_id in meta-ads.yaml"}}
 
-    if not file and not image_url:
-        return {"error": {"message": "Provide either 'file' (base64/data URL) or 'image_url'"}}
+    if not file and not image_url and not file_path:
+        return {"error": {"message": "Provide one of: 'file' (base64/data URL), 'image_url', or 'file_path'"}}
 
     account_id = ensure_account_prefix(account_id)
 
@@ -93,7 +95,36 @@ async def meta_upload_image(
         encoded_image = ""
         inferred_name = name or ""
 
-        if file:
+        if file_path:
+            # Handle local file path
+            if not os.path.isfile(file_path):
+                return {
+                    "error": {
+                        "message": f"File not found: {file_path}",
+                        "suggestions": [
+                            "Check that the file path is correct",
+                            "Ensure the file exists and is readable"
+                        ]
+                    }
+                }
+
+            try:
+                with open(file_path, "rb") as f:
+                    image_bytes = f.read()
+                encoded_image = base64.b64encode(image_bytes).decode("utf-8")
+
+                # Infer name from filename
+                if not inferred_name:
+                    inferred_name = os.path.basename(file_path)
+            except Exception as e:
+                return {
+                    "error": {
+                        "message": f"Failed to read file: {file_path}",
+                        "details": str(e)
+                    }
+                }
+
+        elif file:
             # Handle data URL or raw base64
             if file.startswith("data:") and "base64," in file:
                 header, base64_payload = file.split("base64,", 1)
