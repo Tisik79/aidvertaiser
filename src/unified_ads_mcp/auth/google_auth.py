@@ -160,12 +160,13 @@ class GoogleAdsAuth:
             cached = load_token("google")
             if cached and self._is_token_valid(cached):
                 # Restore expiry if available, otherwise assume expired to force refresh
+                # Note: google-auth expects naive UTC datetimes for expiry
                 expiry = None
                 if cached.get("expiry"):
-                    expiry = datetime.fromtimestamp(cached["expiry"], tz=timezone.utc)
+                    expiry = datetime.utcfromtimestamp(cached["expiry"])
                 elif cached.get("created_at"):
                     # No expiry stored - assume 1 hour lifetime, treat as expired if older
-                    created = datetime.fromtimestamp(cached["created_at"], tz=timezone.utc)
+                    created = datetime.utcfromtimestamp(cached["created_at"])
                     expiry = created + timedelta(hours=1)
 
                 self._credentials = Credentials(
