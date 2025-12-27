@@ -5,19 +5,32 @@ This module provides OAuth2 authentication for the Meta (Facebook) Ads API with:
     - Short-lived to long-lived token exchange
     - Automatic token refresh and persistent caching
     - Token validation against Meta's API
+    - Config file support (~/meta-ads.yaml)
 
 Configuration:
-    META_APP_ID: Facebook App ID (default: 779761636818489)
-    META_APP_SECRET: Facebook App Secret (required for long-lived tokens)
-    META_ACCESS_TOKEN: Pre-existing access token (optional, bypasses OAuth)
+    Set META_ADS_CREDENTIALS env var to point to your meta-ads.yaml file,
+    or place it at ~/meta-ads.yaml (default location).
+
+    Required fields in meta-ads.yaml:
+        app_id: Facebook App ID
+        app_secret: Facebook App Secret (for long-lived tokens)
+        access_token: (optional) Pre-existing access token
+        system_user_token: (optional) Never-expiring system user token
+
+    Or use environment variables:
+        META_APP_ID: Facebook App ID
+        META_APP_SECRET: Facebook App Secret
+        META_ACCESS_TOKEN: Pre-existing access token
 """
 
 import os
 import sys
 import time
+from pathlib import Path
 from typing import Optional
 
 import requests
+import yaml
 
 from .oauth_server import (
     start_oauth_server,
@@ -39,15 +52,23 @@ META_SCOPE = "ads_management,ads_read,business_management,pages_show_list,pages_
 # Default App ID (can be overridden via environment)
 DEFAULT_APP_ID = "779761636818489"
 
+# Default config path
+DEFAULT_CREDENTIALS_PATH = os.path.expanduser("~/meta-ads.yaml")
+
+# Refresh tokens 7 days before expiry
+TOKEN_REFRESH_BUFFER = 7 * 24 * 60 * 60
+
 
 class MetaAdsAuth:
     """Handles Meta Ads OAuth authentication with browser flow.
 
     This class manages the OAuth2 flow for Meta Ads API access, including:
+        - Config file support (~/meta-ads.yaml)
+        - System user tokens (never expire)
         - Browser-based authentication when tokens are missing/expired
         - Short-lived to long-lived token exchange (60 days)
-        - Token validation against Meta's API
-        - Persistent token caching
+        - Automatic token refresh before expiry
+        - Persistent token caching with config file updates
 
     Example:
         >>> auth = MetaAdsAuth()
@@ -57,27 +78,75 @@ class MetaAdsAuth:
 
     def __init__(
         self,
+        config_path: Optional[str] = None,
         app_id: Optional[str] = None,
         app_secret: Optional[str] = None,
     ):
         """Initialize the Meta Ads auth handler.
 
         Args:
-            app_id: Facebook App ID. Defaults to META_APP_ID env var or default app.
-            app_secret: Facebook App Secret. Defaults to META_APP_SECRET env var.
+            config_path: Path to meta-ads.yaml config file.
+                        Defaults to META_ADS_CREDENTIALS env var or ~/meta-ads.yaml.
+            app_id: Facebook App ID. Overrides config file.
+            app_secret: Facebook App Secret. Overrides config file.
         """
-        self.app_id = app_id or os.environ.get("META_APP_ID", DEFAULT_APP_ID)
-        self.app_secret = app_secret or os.environ.get("META_APP_SECRET", "")
+        self.config_path = config_path or os.environ.get(
+            "META_ADS_CREDENTIALS",
+            DEFAULT_CREDENTIALS_PATH
+        )
+        self._config = self._load_config()
+
+        # Allow overrides from parameters or env vars
+        self.app_id = app_id or os.environ.get("META_APP_ID") or self._config.get("app_id", DEFAULT_APP_ID)
+        self.app_secret = app_secret or os.environ.get("META_APP_SECRET") or self._config.get("app_secret", "")
         self._access_token: Optional[str] = None
-        self._token_expires_at: int = 0
+        self._token_expires_at: int = self._config.get("token_expires_at", 0)
+
+    def _load_config(self) -> dict:
+        """Load Meta Ads config from YAML file.
+
+        Returns:
+            Dictionary with configuration values, or empty dict if no file.
+        """
+        if not os.path.exists(self.config_path):
+            return {}
+
+        try:
+            with open(self.config_path, "r", encoding="utf-8") as f:
+                config = yaml.safe_load(f)
+            return config or {}
+        except Exception as e:
+            print(f"[Meta Ads] Warning: Could not load config: {e}", file=sys.stderr)
+            return {}
+
+    def _save_config(self) -> None:
+        """Save updated config back to YAML file."""
+        if not self.config_path:
+            return
+
+        try:
+            # Update config with current values
+            self._config["access_token"] = self._access_token
+            self._config["token_expires_at"] = self._token_expires_at
+            self._config["app_id"] = self.app_id
+            if self.app_secret:
+                self._config["app_secret"] = self.app_secret
+
+            with open(self.config_path, "w", encoding="utf-8") as f:
+                yaml.dump(self._config, f, default_flow_style=False)
+            print(f"[Meta Ads] Config saved to {self.config_path}", file=sys.stderr)
+        except Exception as e:
+            print(f"[Meta Ads] Warning: Could not save config: {e}", file=sys.stderr)
 
     def get_access_token(self, force_refresh: bool = False) -> str:
         """Get valid Meta access token, refreshing or re-authenticating if needed.
 
         This method attempts to get a token in the following order:
-            1. Check META_ACCESS_TOKEN environment variable
-            2. Try cached token from disk
-            3. Fall back to browser-based OAuth flow
+            1. Check for system_user_token in config (never expires)
+            2. Check META_ACCESS_TOKEN environment variable
+            3. Try token from config file (with auto-refresh if near expiry)
+            4. Try cached token from disk
+            5. Fall back to browser-based OAuth flow
 
         Args:
             force_refresh: If True, force re-authentication via browser.
@@ -90,7 +159,17 @@ class MetaAdsAuth:
             RuntimeError: If authentication fails.
         """
         if not force_refresh:
-            # Check environment variable first
+            # 1. Check for system user token (never expires)
+            system_token = self._config.get("system_user_token")
+            if system_token:
+                if self._validate_token(system_token):
+                    print("[Meta Ads] Using system user token (never expires)", file=sys.stderr)
+                    self._access_token = system_token
+                    return system_token
+                else:
+                    print("[Meta Ads] System user token is invalid", file=sys.stderr)
+
+            # 2. Check environment variable
             env_token = os.environ.get("META_ACCESS_TOKEN")
             if env_token:
                 if self._validate_token(env_token):
@@ -99,7 +178,25 @@ class MetaAdsAuth:
                 else:
                     print("[Meta Ads] Environment token is invalid/expired", file=sys.stderr)
 
-            # Try cached token
+            # 3. Try token from config file
+            config_token = self._config.get("access_token")
+            if config_token:
+                # Check if we should auto-refresh (7 days before expiry)
+                if self._should_refresh_token():
+                    print("[Meta Ads] Token expiring soon, attempting refresh...", file=sys.stderr)
+                    refreshed = self._refresh_long_lived_token(config_token)
+                    if refreshed:
+                        return refreshed
+
+                # Validate current token
+                if self._validate_token(config_token):
+                    print("[Meta Ads] Using token from config file", file=sys.stderr)
+                    self._access_token = config_token
+                    return config_token
+                else:
+                    print("[Meta Ads] Config token is invalid/expired", file=sys.stderr)
+
+            # 4. Try cached token
             cached = load_token("meta")
             if cached and self._is_token_valid(cached):
                 token = cached.get("access_token")
@@ -110,8 +207,69 @@ class MetaAdsAuth:
                 else:
                     print("[Meta Ads] Cached token is invalid/expired", file=sys.stderr)
 
-        # Need browser-based OAuth flow
+        # 5. Need browser-based OAuth flow
         return self._browser_auth_flow()
+
+    def _should_refresh_token(self) -> bool:
+        """Check if token should be refreshed (within 7 days of expiry)."""
+        if self._token_expires_at == 0:
+            return False
+        return int(time.time()) > (self._token_expires_at - TOKEN_REFRESH_BUFFER)
+
+    def _refresh_long_lived_token(self, current_token: str) -> Optional[str]:
+        """Refresh a long-lived token to get a new one.
+
+        Long-lived tokens can be refreshed once per day as long as they're still valid.
+        This gives you a new 60-day token.
+
+        Args:
+            current_token: The current long-lived token.
+
+        Returns:
+            New access token if refresh succeeded, None otherwise.
+        """
+        if not self.app_secret:
+            print("[Meta Ads] Cannot refresh without app_secret", file=sys.stderr)
+            return None
+
+        try:
+            response = requests.get(
+                META_TOKEN_URL,
+                params={
+                    "grant_type": "fb_exchange_token",
+                    "client_id": self.app_id,
+                    "client_secret": self.app_secret,
+                    "fb_exchange_token": current_token,
+                },
+                timeout=30,
+            )
+
+            if response.status_code == 200:
+                data = response.json()
+                new_token = data["access_token"]
+                expires_in = data.get("expires_in", 5184000)  # Default 60 days
+
+                self._access_token = new_token
+                self._token_expires_at = int(time.time()) + expires_in
+
+                # Save updated token to config
+                self._save_config()
+                save_token("meta", {
+                    "access_token": new_token,
+                    "expires_in": expires_in,
+                    "created_at": int(time.time()),
+                    "token_type": "long_lived",
+                })
+
+                print(f"[Meta Ads] Token refreshed! New expiry: {expires_in // 86400} days", file=sys.stderr)
+                return new_token
+            else:
+                error = response.json().get("error", {})
+                print(f"[Meta Ads] Token refresh failed: {error.get('message', 'Unknown')}", file=sys.stderr)
+        except Exception as e:
+            print(f"[Meta Ads] Token refresh error: {e}", file=sys.stderr)
+
+        return None
 
     def _browser_auth_flow(self) -> str:
         """Perform browser-based OAuth flow.
@@ -186,10 +344,11 @@ class MetaAdsAuth:
                 file=sys.stderr
             )
 
-        # Save token
+        # Save token to both cache and config file
         save_token("meta", token_data)
         self._access_token = token_data["access_token"]
         self._token_expires_at = int(time.time()) + token_data.get("expires_in", 3600)
+        self._save_config()
 
         print("[Meta Ads] Authentication successful!", file=sys.stderr)
         return self._access_token
@@ -326,12 +485,14 @@ _meta_auth: Optional[MetaAdsAuth] = None
 
 
 def get_meta_auth(
+    config_path: Optional[str] = None,
     app_id: Optional[str] = None,
     app_secret: Optional[str] = None,
 ) -> MetaAdsAuth:
     """Get or create the Meta Ads auth handler singleton.
 
     Args:
+        config_path: Optional path to meta-ads.yaml config file.
         app_id: Optional Facebook App ID (only used on first call).
         app_secret: Optional Facebook App Secret (only used on first call).
 
@@ -341,7 +502,7 @@ def get_meta_auth(
     global _meta_auth
 
     if _meta_auth is None:
-        _meta_auth = MetaAdsAuth(app_id, app_secret)
+        _meta_auth = MetaAdsAuth(config_path, app_id, app_secret)
 
     return _meta_auth
 
