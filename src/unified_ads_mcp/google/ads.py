@@ -7,15 +7,15 @@ listing, creating, updating, and deleting ads within ad groups.
 from typing import Any, Optional
 
 from google.ads.googleads.errors import GoogleAdsException
-from mcp.server.fastmcp import ToolError
+from mcp.server.fastmcp.exceptions import ToolError
 
 from ..server import mcp
-from .client import get_google_ads_client, clean_customer_id, format_error
+from .client import get_google_ads_client, clean_customer_id, format_error, get_default_customer_id
 
 
 @mcp.tool()
 def google_list_ads(
-    customer_id: str,
+    customer_id: Optional[str] = None,
     ad_group_id: Optional[str] = None,
     status: Optional[str] = None,
     login_customer_id: Optional[str] = None,
@@ -47,7 +47,9 @@ def google_list_ads(
     """
     try:
         client = get_google_ads_client(login_customer_id=login_customer_id)
-        customer_id = clean_customer_id(customer_id)
+        customer_id = clean_customer_id(customer_id or get_default_customer_id() or "")
+        if not customer_id:
+            raise ToolError("No customer_id provided and no default configured")
 
 
         query = """
@@ -120,9 +122,9 @@ def google_list_ads(
 
 @mcp.tool()
 def google_get_ad(
-    customer_id: str,
     ad_group_id: str,
     ad_id: str,
+    customer_id: Optional[str] = None,
     login_customer_id: Optional[str] = None,
 ) -> dict[str, Any]:
     """Gets detailed information about a specific ad.
@@ -150,7 +152,9 @@ def google_get_ad(
     """
     try:
         client = get_google_ads_client(login_customer_id=login_customer_id)
-        customer_id = clean_customer_id(customer_id)
+        customer_id = clean_customer_id(customer_id or get_default_customer_id() or "")
+        if not customer_id:
+            raise ToolError("No customer_id provided and no default configured")
 
 
         query = f"""
@@ -230,11 +234,11 @@ def google_get_ad(
 
 @mcp.tool()
 def google_create_responsive_search_ad(
-    customer_id: str,
     ad_group_id: str,
     headlines: list[str],
     descriptions: list[str],
     final_urls: list[str],
+    customer_id: Optional[str] = None,
     path1: Optional[str] = None,
     path2: Optional[str] = None,
     status: str = "ENABLED",
@@ -246,11 +250,11 @@ def google_create_responsive_search_ad(
     of headlines and descriptions to find the best performing ads.
 
     Args:
-        customer_id: The Google Ads customer ID (digits only, no dashes).
         ad_group_id: The ad group ID to add the ad to.
         headlines: List of headline texts (3-15 required, max 30 chars each).
         descriptions: List of description texts (2-4 required, max 90 chars each).
         final_urls: List of final landing page URLs.
+        customer_id: The Google Ads customer ID. Uses default from config if not provided.
         path1: Optional display path 1 (max 15 chars).
         path2: Optional display path 2 (max 15 chars, requires path1).
         status: Initial status - ENABLED (default) or PAUSED.
@@ -280,7 +284,9 @@ def google_create_responsive_search_ad(
 
     try:
         client = get_google_ads_client(login_customer_id=login_customer_id)
-        customer_id = clean_customer_id(customer_id)
+        customer_id = clean_customer_id(customer_id or get_default_customer_id() or "")
+        if not customer_id:
+            raise ToolError("No customer_id provided and no default configured")
 
 
         ad_group_ad_service = client.get_service("AdGroupAdService")
@@ -335,10 +341,10 @@ def google_create_responsive_search_ad(
 
 @mcp.tool()
 def google_update_ad(
-    customer_id: str,
     ad_group_id: str,
     ad_id: str,
     status: str,
+    customer_id: Optional[str] = None,
     login_customer_id: Optional[str] = None,
 ) -> dict[str, Any]:
     """Updates an ad's status.
@@ -348,10 +354,10 @@ def google_update_ad(
     and create a new one.
 
     Args:
-        customer_id: The Google Ads customer ID (digits only, no dashes).
         ad_group_id: The ad group ID containing the ad.
         ad_id: The ad ID to update.
         status: New status - ENABLED, PAUSED, or REMOVED.
+        customer_id: The Google Ads customer ID. Uses default from config if not provided.
         login_customer_id: Optional MCC account ID if accessing through
             a manager account.
 
@@ -365,7 +371,9 @@ def google_update_ad(
     """
     try:
         client = get_google_ads_client(login_customer_id=login_customer_id)
-        customer_id = clean_customer_id(customer_id)
+        customer_id = clean_customer_id(customer_id or get_default_customer_id() or "")
+        if not customer_id:
+            raise ToolError("No customer_id provided and no default configured")
 
 
         ad_group_ad_service = client.get_service("AdGroupAdService")
@@ -393,9 +401,9 @@ def google_update_ad(
 
 @mcp.tool()
 def google_delete_ad(
-    customer_id: str,
     ad_group_id: str,
     ad_id: str,
+    customer_id: Optional[str] = None,
     login_customer_id: Optional[str] = None,
 ) -> dict[str, Any]:
     """Removes an ad.
@@ -420,7 +428,9 @@ def google_delete_ad(
     """
     try:
         client = get_google_ads_client(login_customer_id=login_customer_id)
-        customer_id = clean_customer_id(customer_id)
+        customer_id = clean_customer_id(customer_id or get_default_customer_id() or "")
+        if not customer_id:
+            raise ToolError("No customer_id provided and no default configured")
 
 
         ad_group_ad_service = client.get_service("AdGroupAdService")

@@ -182,6 +182,28 @@ def get_login_customer_id() -> Optional[str]:
     return str(config.get("login_customer_id", "")).replace("-", "") or None
 
 
+def get_default_customer_id() -> Optional[str]:
+    """Gets the default_customer_id from the configuration.
+
+    This is the account to query by default when no customer_id is specified.
+    Useful for avoiding AI confusion about which account to use.
+
+    Returns:
+        The default_customer_id if configured, falls back to login_customer_id.
+    """
+    credentials_path = os.environ.get("GOOGLE_ADS_CREDENTIALS", DEFAULT_CREDENTIALS_PATH)
+
+    if not os.path.isfile(credentials_path):
+        return None
+
+    with open(credentials_path, "r", encoding="utf-8") as f:
+        config = yaml.safe_load(f)
+
+    # Try default_customer_id first, fall back to login_customer_id
+    default_id = config.get("default_customer_id") or config.get("login_customer_id")
+    return str(default_id).replace("-", "") if default_id else None
+
+
 def format_value(value: Any) -> Any:
     """Formats a value from a Google Ads API response.
 

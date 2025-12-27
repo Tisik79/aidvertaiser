@@ -7,15 +7,15 @@ listing, adding, updating, and removing keywords within ad groups.
 from typing import Any, Optional
 
 from google.ads.googleads.errors import GoogleAdsException
-from mcp.server.fastmcp import ToolError
+from mcp.server.fastmcp.exceptions import ToolError
 
 from ..server import mcp
-from .client import get_google_ads_client, clean_customer_id, format_error
+from .client import get_google_ads_client, clean_customer_id, format_error, get_default_customer_id
 
 
 @mcp.tool()
 def google_list_keywords(
-    customer_id: str,
+    customer_id: Optional[str] = None,
     ad_group_id: Optional[str] = None,
     status: Optional[str] = None,
     login_customer_id: Optional[str] = None,
@@ -49,7 +49,9 @@ def google_list_keywords(
     """
     try:
         client = get_google_ads_client(login_customer_id=login_customer_id)
-        customer_id = clean_customer_id(customer_id)
+        customer_id = clean_customer_id(customer_id or get_default_customer_id() or "")
+        if not customer_id:
+            raise ToolError("No customer_id provided and no default configured")
 
 
         query = """
@@ -116,9 +118,9 @@ def google_list_keywords(
 
 @mcp.tool()
 def google_get_keyword(
-    customer_id: str,
     ad_group_id: str,
     keyword_id: str,
+    customer_id: Optional[str] = None,
     login_customer_id: Optional[str] = None,
 ) -> dict[str, Any]:
     """Gets detailed information about a specific keyword.
@@ -148,7 +150,9 @@ def google_get_keyword(
     """
     try:
         client = get_google_ads_client(login_customer_id=login_customer_id)
-        customer_id = clean_customer_id(customer_id)
+        customer_id = clean_customer_id(customer_id or get_default_customer_id() or "")
+        if not customer_id:
+            raise ToolError("No customer_id provided and no default configured")
 
 
         query = f"""
@@ -219,9 +223,9 @@ def google_get_keyword(
 
 @mcp.tool()
 def google_add_keywords(
-    customer_id: str,
     ad_group_id: str,
     keywords: list[str],
+    customer_id: Optional[str] = None,
     match_type: str = "BROAD",
     cpc_bid_micros: Optional[int] = None,
     status: str = "ENABLED",
@@ -230,9 +234,9 @@ def google_add_keywords(
     """Adds keywords to an ad group.
 
     Args:
-        customer_id: The Google Ads customer ID (digits only, no dashes).
         ad_group_id: The ad group ID to add keywords to.
         keywords: List of keyword texts to add.
+        customer_id: The Google Ads customer ID. Uses default from config if not provided.
         match_type: Match type for all keywords. Options:
             - BROAD: Broad match (default)
             - PHRASE: Phrase match
@@ -256,7 +260,9 @@ def google_add_keywords(
 
     try:
         client = get_google_ads_client(login_customer_id=login_customer_id)
-        customer_id = clean_customer_id(customer_id)
+        customer_id = clean_customer_id(customer_id or get_default_customer_id() or "")
+        if not customer_id:
+            raise ToolError("No customer_id provided and no default configured")
 
 
         ad_group_criterion_service = client.get_service("AdGroupCriterionService")
@@ -299,9 +305,9 @@ def google_add_keywords(
 
 @mcp.tool()
 def google_update_keyword(
-    customer_id: str,
     ad_group_id: str,
     keyword_id: str,
+    customer_id: Optional[str] = None,
     status: Optional[str] = None,
     cpc_bid_micros: Optional[int] = None,
     final_urls: Optional[list[str]] = None,
@@ -333,7 +339,9 @@ def google_update_keyword(
     """
     try:
         client = get_google_ads_client(login_customer_id=login_customer_id)
-        customer_id = clean_customer_id(customer_id)
+        customer_id = clean_customer_id(customer_id or get_default_customer_id() or "")
+        if not customer_id:
+            raise ToolError("No customer_id provided and no default configured")
 
 
         ad_group_criterion_service = client.get_service("AdGroupCriterionService")
@@ -378,9 +386,9 @@ def google_update_keyword(
 
 @mcp.tool()
 def google_remove_keyword(
-    customer_id: str,
     ad_group_id: str,
     keyword_id: str,
+    customer_id: Optional[str] = None,
     login_customer_id: Optional[str] = None,
 ) -> dict[str, Any]:
     """Removes a keyword from an ad group.
@@ -405,7 +413,9 @@ def google_remove_keyword(
     """
     try:
         client = get_google_ads_client(login_customer_id=login_customer_id)
-        customer_id = clean_customer_id(customer_id)
+        customer_id = clean_customer_id(customer_id or get_default_customer_id() or "")
+        if not customer_id:
+            raise ToolError("No customer_id provided and no default configured")
 
 
         ad_group_criterion_service = client.get_service("AdGroupCriterionService")
@@ -428,9 +438,9 @@ def google_remove_keyword(
 
 @mcp.tool()
 def google_add_negative_keywords(
-    customer_id: str,
     ad_group_id: str,
     keywords: list[str],
+    customer_id: Optional[str] = None,
     match_type: str = "BROAD",
     login_customer_id: Optional[str] = None,
 ) -> dict[str, Any]:
@@ -439,9 +449,9 @@ def google_add_negative_keywords(
     Negative keywords prevent ads from showing for specific search terms.
 
     Args:
-        customer_id: The Google Ads customer ID (digits only, no dashes).
         ad_group_id: The ad group ID to add negative keywords to.
         keywords: List of negative keyword texts to add.
+        customer_id: The Google Ads customer ID. Uses default from config if not provided.
         match_type: Match type for all keywords. Options:
             - BROAD: Broad match negative (default)
             - PHRASE: Phrase match negative
@@ -463,7 +473,9 @@ def google_add_negative_keywords(
 
     try:
         client = get_google_ads_client(login_customer_id=login_customer_id)
-        customer_id = clean_customer_id(customer_id)
+        customer_id = clean_customer_id(customer_id or get_default_customer_id() or "")
+        if not customer_id:
+            raise ToolError("No customer_id provided and no default configured")
 
 
         ad_group_criterion_service = client.get_service("AdGroupCriterionService")

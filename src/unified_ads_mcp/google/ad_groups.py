@@ -7,15 +7,15 @@ listing, creating, updating, and deleting ad groups within campaigns.
 from typing import Any, Optional
 
 from google.ads.googleads.errors import GoogleAdsException
-from mcp.server.fastmcp import ToolError
+from mcp.server.fastmcp.exceptions import ToolError
 
 from ..server import mcp
-from .client import get_google_ads_client, clean_customer_id, format_error
+from .client import get_google_ads_client, clean_customer_id, format_error, get_default_customer_id
 
 
 @mcp.tool()
 def google_list_ad_groups(
-    customer_id: str,
+    customer_id: Optional[str] = None,
     campaign_id: Optional[str] = None,
     status: Optional[str] = None,
     login_customer_id: Optional[str] = None,
@@ -47,7 +47,9 @@ def google_list_ad_groups(
     """
     try:
         client = get_google_ads_client(login_customer_id=login_customer_id)
-        customer_id = clean_customer_id(customer_id)
+        customer_id = clean_customer_id(customer_id or get_default_customer_id() or "")
+        if not customer_id:
+            raise ToolError("No customer_id provided and no default configured")
 
         query = """
             SELECT
@@ -107,15 +109,16 @@ def google_list_ad_groups(
 
 @mcp.tool()
 def google_get_ad_group(
-    customer_id: str,
     ad_group_id: str,
+    customer_id: Optional[str] = None,
     login_customer_id: Optional[str] = None,
 ) -> dict[str, Any]:
     """Gets detailed information about a specific ad group.
 
     Args:
-        customer_id: The Google Ads customer ID (digits only, no dashes).
         ad_group_id: The ad group ID to retrieve.
+        customer_id: The Google Ads customer ID (digits only, no dashes).
+            Uses default from config if not provided.
         login_customer_id: Optional MCC account ID if accessing through
             a manager account.
 
@@ -140,7 +143,9 @@ def google_get_ad_group(
     """
     try:
         client = get_google_ads_client(login_customer_id=login_customer_id)
-        customer_id = clean_customer_id(customer_id)
+        customer_id = clean_customer_id(customer_id or get_default_customer_id() or "")
+        if not customer_id:
+            raise ToolError("No customer_id provided and no default configured")
 
         query = f"""
             SELECT
@@ -197,10 +202,10 @@ def google_get_ad_group(
 
 @mcp.tool()
 def google_create_ad_group(
-    customer_id: str,
     campaign_id: str,
     name: str,
     cpc_bid_micros: int,
+    customer_id: Optional[str] = None,
     status: str = "ENABLED",
     ad_group_type: str = "SEARCH_STANDARD",
     login_customer_id: Optional[str] = None,
@@ -208,10 +213,10 @@ def google_create_ad_group(
     """Creates a new ad group within a campaign.
 
     Args:
-        customer_id: The Google Ads customer ID (digits only, no dashes).
         campaign_id: The parent campaign ID.
         name: The ad group name.
         cpc_bid_micros: Default CPC bid in micros (1,000,000 micros = $1).
+        customer_id: The Google Ads customer ID. Uses default from config if not provided.
         status: Initial status - ENABLED (default) or PAUSED.
         ad_group_type: Ad group type. Options:
             - SEARCH_STANDARD: Standard Search ad group
@@ -233,7 +238,9 @@ def google_create_ad_group(
     """
     try:
         client = get_google_ads_client(login_customer_id=login_customer_id)
-        customer_id = clean_customer_id(customer_id)
+        customer_id = clean_customer_id(customer_id or get_default_customer_id() or "")
+        if not customer_id:
+            raise ToolError("No customer_id provided and no default configured")
 
         ad_group_service = client.get_service("AdGroupService")
         ad_group_operation = client.get_type("AdGroupOperation")
@@ -262,8 +269,8 @@ def google_create_ad_group(
 
 @mcp.tool()
 def google_update_ad_group(
-    customer_id: str,
     ad_group_id: str,
+    customer_id: Optional[str] = None,
     name: Optional[str] = None,
     status: Optional[str] = None,
     cpc_bid_micros: Optional[int] = None,
@@ -272,8 +279,8 @@ def google_update_ad_group(
     """Updates an existing ad group.
 
     Args:
-        customer_id: The Google Ads customer ID (digits only, no dashes).
         ad_group_id: The ad group ID to update.
+        customer_id: The Google Ads customer ID. Uses default from config if not provided.
         name: Optional new ad group name.
         status: Optional new status - ENABLED, PAUSED, or REMOVED.
         cpc_bid_micros: Optional new CPC bid in micros.
@@ -291,7 +298,9 @@ def google_update_ad_group(
     """
     try:
         client = get_google_ads_client(login_customer_id=login_customer_id)
-        customer_id = clean_customer_id(customer_id)
+        customer_id = clean_customer_id(customer_id or get_default_customer_id() or "")
+        if not customer_id:
+            raise ToolError("No customer_id provided and no default configured")
 
         ad_group_service = client.get_service("AdGroupService")
         ad_group_operation = client.get_type("AdGroupOperation")
@@ -334,8 +343,8 @@ def google_update_ad_group(
 
 @mcp.tool()
 def google_delete_ad_group(
-    customer_id: str,
     ad_group_id: str,
+    customer_id: Optional[str] = None,
     login_customer_id: Optional[str] = None,
 ) -> dict[str, Any]:
     """Removes an ad group.
@@ -344,8 +353,8 @@ def google_delete_ad_group(
     is retained and can still be queried but cannot be reactivated.
 
     Args:
-        customer_id: The Google Ads customer ID (digits only, no dashes).
         ad_group_id: The ad group ID to remove.
+        customer_id: The Google Ads customer ID. Uses default from config if not provided.
         login_customer_id: Optional MCC account ID if accessing through
             a manager account.
 
@@ -359,7 +368,9 @@ def google_delete_ad_group(
     """
     try:
         client = get_google_ads_client(login_customer_id=login_customer_id)
-        customer_id = clean_customer_id(customer_id)
+        customer_id = clean_customer_id(customer_id or get_default_customer_id() or "")
+        if not customer_id:
+            raise ToolError("No customer_id provided and no default configured")
 
         ad_group_service = client.get_service("AdGroupService")
         ad_group_operation = client.get_type("AdGroupOperation")

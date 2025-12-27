@@ -8,11 +8,11 @@ from typing import Any, Optional
 
 from google.ads.googleads.errors import GoogleAdsException
 from google.ads.googleads.util import get_nested_attr
-from mcp.server.fastmcp import ToolError
+from mcp.server.fastmcp.exceptions import ToolError
 import proto
 
 from ..server import mcp
-from .client import get_google_ads_client, clean_customer_id, format_error, format_value
+from .client import get_google_ads_client, clean_customer_id, format_error, format_value, get_default_customer_id
 
 
 def _preprocess_gaql(query: str) -> str:
@@ -38,8 +38,8 @@ def _preprocess_gaql(query: str) -> str:
 
 @mcp.tool()
 def google_run_query(
-    customer_id: str,
     query: str,
+    customer_id: Optional[str] = None,
     login_customer_id: Optional[str] = None,
 ) -> list[dict[str, Any]]:
     """Executes a Google Ads Query Language (GAQL) query.
@@ -49,6 +49,7 @@ def google_run_query(
 
     Args:
         customer_id: The Google Ads customer ID (digits only, no dashes).
+            Uses default from config if not provided.
         query: The GAQL query to execute. Example:
             SELECT campaign.id, campaign.name, metrics.clicks
             FROM campaign
@@ -80,7 +81,9 @@ def google_run_query(
     """
     try:
         client = get_google_ads_client(login_customer_id=login_customer_id)
-        customer_id = clean_customer_id(customer_id)
+        customer_id = clean_customer_id(customer_id or get_default_customer_id() or "")
+        if not customer_id:
+            raise ToolError("No customer_id provided and no default configured")
 
         query = _preprocess_gaql(query)
 
@@ -107,7 +110,7 @@ def google_run_query(
 
 @mcp.tool()
 def google_get_campaign_performance(
-    customer_id: str,
+    customer_id: Optional[str] = None,
     date_range: str = "LAST_30_DAYS",
     campaign_id: Optional[str] = None,
     include_removed: bool = False,
@@ -117,6 +120,7 @@ def google_get_campaign_performance(
 
     Args:
         customer_id: The Google Ads customer ID (digits only, no dashes).
+            Uses default from config if not provided.
         date_range: Predefined date range. Options:
             - TODAY
             - YESTERDAY
@@ -155,7 +159,9 @@ def google_get_campaign_performance(
     """
     try:
         client = get_google_ads_client(login_customer_id=login_customer_id)
-        customer_id = clean_customer_id(customer_id)
+        customer_id = clean_customer_id(customer_id or get_default_customer_id() or "")
+        if not customer_id:
+            raise ToolError("No customer_id provided and no default configured")
 
         query = f"""
             SELECT
@@ -218,7 +224,7 @@ def google_get_campaign_performance(
 
 @mcp.tool()
 def google_get_keyword_performance(
-    customer_id: str,
+    customer_id: Optional[str] = None,
     date_range: str = "LAST_30_DAYS",
     ad_group_id: Optional[str] = None,
     campaign_id: Optional[str] = None,
@@ -229,6 +235,7 @@ def google_get_keyword_performance(
 
     Args:
         customer_id: The Google Ads customer ID (digits only, no dashes).
+            Uses default from config if not provided.
         date_range: Predefined date range (same options as campaign performance).
         ad_group_id: Optional ad group ID to filter keywords.
         campaign_id: Optional campaign ID to filter keywords.
@@ -253,7 +260,9 @@ def google_get_keyword_performance(
     """
     try:
         client = get_google_ads_client(login_customer_id=login_customer_id)
-        customer_id = clean_customer_id(customer_id)
+        customer_id = clean_customer_id(customer_id or get_default_customer_id() or "")
+        if not customer_id:
+            raise ToolError("No customer_id provided and no default configured")
 
         query = f"""
             SELECT
@@ -321,7 +330,7 @@ def google_get_keyword_performance(
 
 @mcp.tool()
 def google_get_ad_performance(
-    customer_id: str,
+    customer_id: Optional[str] = None,
     date_range: str = "LAST_30_DAYS",
     ad_group_id: Optional[str] = None,
     campaign_id: Optional[str] = None,
@@ -331,6 +340,7 @@ def google_get_ad_performance(
 
     Args:
         customer_id: The Google Ads customer ID (digits only, no dashes).
+            Uses default from config if not provided.
         date_range: Predefined date range (same options as campaign performance).
         ad_group_id: Optional ad group ID to filter ads.
         campaign_id: Optional campaign ID to filter ads.
@@ -352,7 +362,9 @@ def google_get_ad_performance(
     """
     try:
         client = get_google_ads_client(login_customer_id=login_customer_id)
-        customer_id = clean_customer_id(customer_id)
+        customer_id = clean_customer_id(customer_id or get_default_customer_id() or "")
+        if not customer_id:
+            raise ToolError("No customer_id provided and no default configured")
 
         query = f"""
             SELECT
@@ -414,7 +426,7 @@ def google_get_ad_performance(
 
 @mcp.tool()
 def google_get_search_terms_report(
-    customer_id: str,
+    customer_id: Optional[str] = None,
     date_range: str = "LAST_30_DAYS",
     campaign_id: Optional[str] = None,
     ad_group_id: Optional[str] = None,
@@ -428,6 +440,7 @@ def google_get_search_terms_report(
 
     Args:
         customer_id: The Google Ads customer ID (digits only, no dashes).
+            Uses default from config if not provided.
         date_range: Predefined date range (same options as campaign performance).
         campaign_id: Optional campaign ID to filter results.
         ad_group_id: Optional ad group ID to filter results.
@@ -448,7 +461,9 @@ def google_get_search_terms_report(
     """
     try:
         client = get_google_ads_client(login_customer_id=login_customer_id)
-        customer_id = clean_customer_id(customer_id)
+        customer_id = clean_customer_id(customer_id or get_default_customer_id() or "")
+        if not customer_id:
+            raise ToolError("No customer_id provided and no default configured")
 
         query = f"""
             SELECT
@@ -509,7 +524,7 @@ def google_get_search_terms_report(
 
 @mcp.tool()
 def google_get_account_summary(
-    customer_id: str,
+    customer_id: Optional[str] = None,
     date_range: str = "LAST_30_DAYS",
     login_customer_id: Optional[str] = None,
 ) -> dict[str, Any]:
@@ -520,6 +535,7 @@ def google_get_account_summary(
 
     Args:
         customer_id: The Google Ads customer ID (digits only, no dashes).
+            Uses default from config if not provided.
         date_range: Predefined date range (same options as campaign performance).
         login_customer_id: Optional MCC account ID if accessing through
             a manager account.
@@ -542,7 +558,9 @@ def google_get_account_summary(
     """
     try:
         client = get_google_ads_client(login_customer_id=login_customer_id)
-        customer_id = clean_customer_id(customer_id)
+        customer_id = clean_customer_id(customer_id or get_default_customer_id() or "")
+        if not customer_id:
+            raise ToolError("No customer_id provided and no default configured")
 
         query = f"""
             SELECT

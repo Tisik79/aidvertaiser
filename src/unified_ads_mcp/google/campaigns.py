@@ -7,10 +7,10 @@ listing, creating, updating, and deleting campaigns.
 from typing import Any, Optional
 
 from google.ads.googleads.errors import GoogleAdsException
-from mcp.server.fastmcp import ToolError
+from mcp.server.fastmcp.exceptions import ToolError
 
 from ..server import mcp
-from .client import get_google_ads_client, clean_customer_id, format_error
+from .client import get_google_ads_client, clean_customer_id, format_error, get_default_customer_id
 
 
 @mcp.tool()
@@ -41,7 +41,7 @@ def google_list_accounts() -> list[dict[str, Any]]:
 
 @mcp.tool()
 def google_list_campaigns(
-    customer_id: str,
+    customer_id: Optional[str] = None,
     status: Optional[str] = None,
     login_customer_id: Optional[str] = None,
 ) -> list[dict[str, Any]]:
@@ -49,6 +49,7 @@ def google_list_campaigns(
 
     Args:
         customer_id: The Google Ads customer ID (digits only, no dashes).
+            Uses default from config if not provided.
         status: Optional filter by status - ENABLED, PAUSED, or REMOVED.
             If not specified, returns all campaigns.
         login_customer_id: Optional MCC account ID if accessing through
@@ -72,7 +73,9 @@ def google_list_campaigns(
     """
     try:
         client = get_google_ads_client(login_customer_id=login_customer_id)
-        customer_id = clean_customer_id(customer_id)
+        customer_id = clean_customer_id(customer_id or get_default_customer_id() or "")
+        if not customer_id:
+            raise ToolError("No customer_id provided and no default configured")
 
         query = """
             SELECT
@@ -125,15 +128,16 @@ def google_list_campaigns(
 
 @mcp.tool()
 def google_get_campaign(
-    customer_id: str,
     campaign_id: str,
+    customer_id: Optional[str] = None,
     login_customer_id: Optional[str] = None,
 ) -> dict[str, Any]:
     """Gets detailed information about a specific Google Ads campaign.
 
     Args:
-        customer_id: The Google Ads customer ID (digits only, no dashes).
         campaign_id: The campaign ID to retrieve.
+        customer_id: The Google Ads customer ID (digits only, no dashes).
+            Uses default from config if not provided.
         login_customer_id: Optional MCC account ID if accessing through
             a manager account.
 
@@ -162,7 +166,9 @@ def google_get_campaign(
     """
     try:
         client = get_google_ads_client(login_customer_id=login_customer_id)
-        customer_id = clean_customer_id(customer_id)
+        customer_id = clean_customer_id(customer_id or get_default_customer_id() or "")
+        if not customer_id:
+            raise ToolError("No customer_id provided and no default configured")
 
         query = f"""
             SELECT
@@ -224,9 +230,9 @@ def google_get_campaign(
 
 @mcp.tool()
 def google_create_campaign(
-    customer_id: str,
     name: str,
     budget_micros: int,
+    customer_id: Optional[str] = None,
     channel_type: str = "SEARCH",
     status: str = "PAUSED",
     start_date: Optional[str] = None,
@@ -237,9 +243,10 @@ def google_create_campaign(
     """Creates a new Google Ads campaign with a daily budget.
 
     Args:
-        customer_id: The Google Ads customer ID (digits only, no dashes).
         name: The campaign name.
         budget_micros: Daily budget in micros (1,000,000 micros = $1 USD).
+        customer_id: The Google Ads customer ID (digits only, no dashes).
+            Uses default from config if not provided.
         channel_type: Advertising channel type. Options:
             - SEARCH: Search Network campaigns
             - DISPLAY: Display Network campaigns
@@ -269,7 +276,9 @@ def google_create_campaign(
     """
     try:
         client = get_google_ads_client(login_customer_id=login_customer_id)
-        customer_id = clean_customer_id(customer_id)
+        customer_id = clean_customer_id(customer_id or get_default_customer_id() or "")
+        if not customer_id:
+            raise ToolError("No customer_id provided and no default configured")
 
         # Create budget first
         campaign_budget_service = client.get_service("CampaignBudgetService")
@@ -323,8 +332,8 @@ def google_create_campaign(
 
 @mcp.tool()
 def google_update_campaign(
-    customer_id: str,
     campaign_id: str,
+    customer_id: Optional[str] = None,
     name: Optional[str] = None,
     status: Optional[str] = None,
     start_date: Optional[str] = None,
@@ -334,8 +343,9 @@ def google_update_campaign(
     """Updates an existing Google Ads campaign.
 
     Args:
-        customer_id: The Google Ads customer ID (digits only, no dashes).
         campaign_id: The campaign ID to update.
+        customer_id: The Google Ads customer ID (digits only, no dashes).
+            Uses default from config if not provided.
         name: Optional new campaign name.
         status: Optional new status - ENABLED, PAUSED, or REMOVED.
         start_date: Optional new start date in YYYY-MM-DD format.
@@ -354,7 +364,9 @@ def google_update_campaign(
     """
     try:
         client = get_google_ads_client(login_customer_id=login_customer_id)
-        customer_id = clean_customer_id(customer_id)
+        customer_id = clean_customer_id(customer_id or get_default_customer_id() or "")
+        if not customer_id:
+            raise ToolError("No customer_id provided and no default configured")
 
         campaign_service = client.get_service("CampaignService")
         campaign_operation = client.get_type("CampaignOperation")
@@ -401,8 +413,8 @@ def google_update_campaign(
 
 @mcp.tool()
 def google_delete_campaign(
-    customer_id: str,
     campaign_id: str,
+    customer_id: Optional[str] = None,
     login_customer_id: Optional[str] = None,
 ) -> dict[str, Any]:
     """Removes a Google Ads campaign.
@@ -411,8 +423,9 @@ def google_delete_campaign(
     is retained and can still be queried but cannot be reactivated.
 
     Args:
-        customer_id: The Google Ads customer ID (digits only, no dashes).
         campaign_id: The campaign ID to remove.
+        customer_id: The Google Ads customer ID (digits only, no dashes).
+            Uses default from config if not provided.
         login_customer_id: Optional MCC account ID if accessing through
             a manager account.
 
@@ -426,7 +439,9 @@ def google_delete_campaign(
     """
     try:
         client = get_google_ads_client(login_customer_id=login_customer_id)
-        customer_id = clean_customer_id(customer_id)
+        customer_id = clean_customer_id(customer_id or get_default_customer_id() or "")
+        if not customer_id:
+            raise ToolError("No customer_id provided and no default configured")
 
         campaign_service = client.get_service("CampaignService")
         campaign_operation = client.get_type("CampaignOperation")
