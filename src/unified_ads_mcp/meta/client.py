@@ -16,6 +16,7 @@ import json
 import functools
 from typing import Any, Dict, Optional, Callable
 
+import yaml
 import httpx
 from facebook_business.api import FacebookAdsApi
 from facebook_business.adobjects.adaccount import AdAccount
@@ -29,6 +30,36 @@ from unified_ads_mcp.auth.meta_auth import get_meta_auth, MetaAdsAuth
 META_GRAPH_API_VERSION = "v22.0"
 META_GRAPH_API_BASE = f"https://graph.facebook.com/{META_GRAPH_API_VERSION}"
 USER_AGENT = "unified-ads-mcp/1.0"
+DEFAULT_CREDENTIALS_PATH = os.path.expanduser("~/meta-ads.yaml")
+
+
+def get_default_account_id() -> Optional[str]:
+    """Get the default Meta Ads account ID from config file.
+
+    Reads from META_ADS_CREDENTIALS env var or ~/meta-ads.yaml.
+
+    Returns:
+        The default account ID (with act_ prefix) or None if not configured.
+    """
+    credentials_path = os.environ.get("META_ADS_CREDENTIALS", DEFAULT_CREDENTIALS_PATH)
+
+    if not os.path.isfile(credentials_path):
+        return None
+
+    try:
+        with open(credentials_path, "r", encoding="utf-8") as f:
+            config = yaml.safe_load(f) or {}
+
+        default_id = config.get("default_account_id")
+        if default_id:
+            # Ensure it has the act_ prefix
+            default_id = str(default_id)
+            if not default_id.startswith("act_"):
+                default_id = f"act_{default_id}"
+            return default_id
+        return None
+    except Exception:
+        return None
 
 
 class MetaAdsClientFactory:

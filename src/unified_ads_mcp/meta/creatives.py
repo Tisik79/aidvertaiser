@@ -14,7 +14,8 @@ from ..server import mcp
 from .client import (
     make_api_request,
     meta_api_tool,
-    ensure_account_prefix
+    ensure_account_prefix,
+    get_default_account_id,
 )
 
 
@@ -39,7 +40,7 @@ async def download_image_from_url(url: str) -> Optional[bytes]:
 @mcp.tool()
 @meta_api_tool
 async def meta_upload_image(
-    account_id: str,
+    account_id: Optional[str] = None,
     access_token: Optional[str] = None,
     image_url: Optional[str] = None,
     file: Optional[str] = None,
@@ -52,6 +53,7 @@ async def meta_upload_image(
 
     Args:
         account_id: Meta Ads account ID (format: act_XXXXXXXXX).
+            Uses default from config if not provided.
         access_token: Meta API access token (uses cached token if not provided).
         image_url: Direct URL to an image to fetch and upload.
         file: Base64-encoded image data or data URL
@@ -78,8 +80,9 @@ async def meta_upload_image(
         >>> image_hash = result["image_hash"]
         >>> # Now use image_hash in meta_create_creative()
     """
+    account_id = account_id or get_default_account_id()
     if not account_id:
-        return {"error": {"message": "account_id is required"}}
+        return {"error": {"message": "account_id is required - configure default_account_id in meta-ads.yaml"}}
 
     if not file and not image_url:
         return {"error": {"message": "Provide either 'file' (base64/data URL) or 'image_url'"}}
@@ -198,12 +201,12 @@ async def meta_upload_image(
 @mcp.tool()
 @meta_api_tool
 async def meta_create_creative(
-    account_id: str,
     image_hash: str,
     page_id: str,
     name: str,
     message: str,
     link_url: str,
+    account_id: Optional[str] = None,
     access_token: Optional[str] = None,
     headline: Optional[str] = None,
     description: Optional[str] = None,
@@ -216,12 +219,13 @@ async def meta_create_creative(
     an image with copy, headline, and call-to-action.
 
     Args:
-        account_id: Meta Ads account ID (format: act_XXXXXXXXX).
         image_hash: Hash of the uploaded image (from meta_upload_image).
         page_id: Facebook Page ID for the ad (required).
         name: Creative name (required).
         message: Primary ad copy/text (required).
         link_url: Destination URL when users click the ad (required).
+        account_id: Meta Ads account ID (format: act_XXXXXXXXX).
+            Uses default from config if not provided.
         access_token: Meta API access token (uses cached token if not provided).
         headline: Ad headline (appears below the image).
         description: Ad description (appears below headline).
@@ -263,8 +267,9 @@ async def meta_create_creative(
         ... )
         >>> creative_id = creative["creative_id"]
     """
+    account_id = account_id or get_default_account_id()
     if not account_id:
-        return {"error": {"message": "account_id is required"}}
+        return {"error": {"message": "account_id is required - configure default_account_id in meta-ads.yaml"}}
     if not image_hash:
         return {"error": {"message": "image_hash is required"}}
     if not page_id:

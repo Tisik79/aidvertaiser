@@ -12,6 +12,7 @@ from .client import (
     make_api_request,
     meta_api_tool,
     ensure_account_prefix,
+    get_default_account_id,
 )
 
 
@@ -55,7 +56,7 @@ async def meta_list_accounts(
 @mcp.tool()
 @meta_api_tool
 async def meta_get_account_info(
-    account_id: str,
+    account_id: Optional[str] = None,
     access_token: Optional[str] = None
 ) -> dict:
     """Get detailed information about a specific Meta Ads account.
@@ -65,6 +66,7 @@ async def meta_get_account_info(
 
     Args:
         account_id: Meta Ads account ID (format: act_XXXXXXXXX or just the number).
+            Uses default from config if not provided.
         access_token: Meta API access token (uses cached token if not provided).
 
     Returns:
@@ -83,11 +85,12 @@ async def meta_get_account_info(
         >>> info = await meta_get_account_info("act_123456789")
         >>> print(f"Account: {info['name']}, Currency: {info['currency']}")
     """
+    account_id = account_id or get_default_account_id()
     if not account_id:
         return {
             "error": {
                 "message": "Account ID is required",
-                "details": "Please specify an account_id parameter",
+                "details": "Please specify an account_id parameter or configure default_account_id in meta-ads.yaml",
                 "example": "Use account_id='act_123456789' or account_id='123456789'"
             }
         }
@@ -136,7 +139,7 @@ async def meta_get_account_info(
 @mcp.tool()
 @meta_api_tool
 async def meta_list_campaigns(
-    account_id: str,
+    account_id: Optional[str] = None,
     access_token: Optional[str] = None,
     status: Optional[str] = None,
     limit: int = 25,
@@ -149,6 +152,7 @@ async def meta_list_campaigns(
 
     Args:
         account_id: Meta Ads account ID (format: act_XXXXXXXXX).
+            Uses default from config if not provided.
         access_token: Meta API access token (uses cached token if not provided).
         status: Filter by effective status (e.g., 'ACTIVE', 'PAUSED', 'ARCHIVED').
         limit: Maximum number of campaigns to return (default: 25).
@@ -164,8 +168,9 @@ async def meta_list_campaigns(
         >>> for campaign in campaigns["data"]:
         ...     print(f"{campaign['name']}: {campaign['objective']}")
     """
+    account_id = account_id or get_default_account_id()
     if not account_id:
-        return {"error": {"message": "account_id is required"}}
+        return {"error": {"message": "account_id is required - configure default_account_id in meta-ads.yaml"}}
 
     account_id = ensure_account_prefix(account_id)
 
@@ -231,9 +236,9 @@ async def meta_get_campaign_details(
 @mcp.tool()
 @meta_api_tool
 async def meta_create_campaign(
-    account_id: str,
     name: str,
     objective: str,
+    account_id: Optional[str] = None,
     access_token: Optional[str] = None,
     status: str = "PAUSED",
     daily_budget: Optional[int] = None,
@@ -249,7 +254,6 @@ async def meta_create_campaign(
     are created in PAUSED status by default for review before activation.
 
     Args:
-        account_id: Meta Ads account ID (format: act_XXXXXXXXX).
         name: Campaign name (required).
         objective: Campaign objective (required). Must be one of:
             - OUTCOME_AWARENESS: Brand awareness and reach
@@ -258,6 +262,8 @@ async def meta_create_campaign(
             - OUTCOME_LEADS: Generate leads
             - OUTCOME_SALES: Drive conversions/sales
             - OUTCOME_APP_PROMOTION: App installs
+        account_id: Meta Ads account ID (format: act_XXXXXXXXX).
+            Uses default from config if not provided.
         access_token: Meta API access token (uses cached token if not provided).
         status: Initial status (default: PAUSED). Options: ACTIVE, PAUSED.
         daily_budget: Daily budget in cents (e.g., 1000 = $10.00).
@@ -286,8 +292,9 @@ async def meta_create_campaign(
         ... )
         >>> print(f"Created campaign: {result['id']}")
     """
+    account_id = account_id or get_default_account_id()
     if not account_id:
-        return {"error": {"message": "account_id is required"}}
+        return {"error": {"message": "account_id is required - configure default_account_id in meta-ads.yaml"}}
     if not name:
         return {"error": {"message": "name is required"}}
     if not objective:

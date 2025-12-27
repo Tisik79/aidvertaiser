@@ -11,7 +11,8 @@ from ..server import mcp
 from .client import (
     make_api_request,
     meta_api_tool,
-    ensure_account_prefix
+    ensure_account_prefix,
+    get_default_account_id,
 )
 
 
@@ -208,8 +209,8 @@ async def meta_search_behaviors(
 @mcp.tool()
 @meta_api_tool
 async def meta_estimate_audience_size(
-    account_id: str,
     targeting: Dict[str, Any],
+    account_id: Optional[str] = None,
     access_token: Optional[str] = None,
     optimization_goal: str = "REACH"
 ) -> dict:
@@ -219,8 +220,7 @@ async def meta_estimate_audience_size(
     size for a given targeting configuration.
 
     Args:
-        account_id: Meta Ads account ID (format: act_XXXXXXXXX).
-        targeting: Complete targeting specification. Example:
+        targeting: Complete targeting specification (required). Example:
             {
                 "age_min": 25,
                 "age_max": 65,
@@ -235,6 +235,8 @@ async def meta_estimate_audience_size(
                 ],
                 "targeting_automation": {"advantage_audience": 1}  # Enable Advantage+
             }
+        account_id: Meta Ads account ID (format: act_XXXXXXXXX).
+            Uses default from config if not provided.
         access_token: Meta API access token (uses cached token if not provided).
         optimization_goal: Optimization goal for estimation. Options:
             - REACH: Maximize reach
@@ -267,8 +269,9 @@ async def meta_estimate_audience_size(
         ... )
         >>> print(f"Estimated reach: {estimate['estimated_audience_size']:,}")
     """
+    account_id = account_id or get_default_account_id()
     if not account_id:
-        return {"error": {"message": "account_id is required"}}
+        return {"error": {"message": "account_id is required - configure default_account_id in meta-ads.yaml"}}
     if not targeting:
         return {
             "error": {

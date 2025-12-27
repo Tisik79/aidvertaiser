@@ -11,14 +11,15 @@ from ..server import mcp
 from .client import (
     make_api_request,
     meta_api_tool,
-    ensure_account_prefix
+    ensure_account_prefix,
+    get_default_account_id,
 )
 
 
 @mcp.tool()
 @meta_api_tool
 async def meta_list_adsets(
-    account_id: str,
+    account_id: Optional[str] = None,
     access_token: Optional[str] = None,
     campaign_id: Optional[str] = None,
     limit: int = 25,
@@ -31,6 +32,7 @@ async def meta_list_adsets(
 
     Args:
         account_id: Meta Ads account ID (format: act_XXXXXXXXX).
+            Uses default from config if not provided.
         access_token: Meta API access token (uses cached token if not provided).
         campaign_id: Optional campaign ID to filter ad sets by campaign.
         limit: Maximum number of ad sets to return (default: 25).
@@ -46,8 +48,9 @@ async def meta_list_adsets(
         >>> for adset in adsets["data"]:
         ...     print(f"{adset['name']}: {adset['optimization_goal']}")
     """
+    account_id = account_id or get_default_account_id()
     if not account_id:
-        return {"error": {"message": "account_id is required"}}
+        return {"error": {"message": "account_id is required - configure default_account_id in meta-ads.yaml"}}
 
     account_id = ensure_account_prefix(account_id)
 
@@ -124,12 +127,12 @@ async def meta_get_adset_details(
 @mcp.tool()
 @meta_api_tool
 async def meta_create_adset(
-    account_id: str,
     campaign_id: str,
     name: str,
     optimization_goal: str,
     billing_event: str,
     targeting: Dict[str, Any],
+    account_id: Optional[str] = None,
     access_token: Optional[str] = None,
     status: str = "PAUSED",
     daily_budget: Optional[int] = None,
@@ -148,9 +151,10 @@ async def meta_create_adset(
     New ad sets are created in PAUSED status by default for review.
 
     Args:
-        account_id: Meta Ads account ID (format: act_XXXXXXXXX).
         campaign_id: Parent campaign ID (required).
         name: Ad set name (required).
+        account_id: Meta Ads account ID (format: act_XXXXXXXXX).
+            Uses default from config if not provided.
         optimization_goal: What to optimize for (required). Options:
             - LINK_CLICKS: Click optimization
             - REACH: Maximize reach
@@ -207,8 +211,9 @@ async def meta_create_adset(
         ...     daily_budget=2500  # $25/day
         ... )
     """
+    account_id = account_id or get_default_account_id()
     if not account_id:
-        return {"error": {"message": "account_id is required"}}
+        return {"error": {"message": "account_id is required - configure default_account_id in meta-ads.yaml"}}
     if not campaign_id:
         return {"error": {"message": "campaign_id is required"}}
     if not name:

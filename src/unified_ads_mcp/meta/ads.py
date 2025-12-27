@@ -11,14 +11,15 @@ from ..server import mcp
 from .client import (
     make_api_request,
     meta_api_tool,
-    ensure_account_prefix
+    ensure_account_prefix,
+    get_default_account_id,
 )
 
 
 @mcp.tool()
 @meta_api_tool
 async def meta_list_ads(
-    account_id: str,
+    account_id: Optional[str] = None,
     access_token: Optional[str] = None,
     adset_id: Optional[str] = None,
     campaign_id: Optional[str] = None,
@@ -32,6 +33,7 @@ async def meta_list_ads(
 
     Args:
         account_id: Meta Ads account ID (format: act_XXXXXXXXX).
+            Uses default from config if not provided.
         access_token: Meta API access token (uses cached token if not provided).
         adset_id: Optional ad set ID to filter ads (takes precedence over campaign_id).
         campaign_id: Optional campaign ID to filter ads.
@@ -48,8 +50,9 @@ async def meta_list_ads(
         >>> for ad in ads["data"]:
         ...     print(f"{ad['name']}: {ad['status']}")
     """
+    account_id = account_id or get_default_account_id()
     if not account_id:
-        return {"error": {"message": "account_id is required"}}
+        return {"error": {"message": "account_id is required - configure default_account_id in meta-ads.yaml"}}
 
     account_id = ensure_account_prefix(account_id)
 
@@ -179,10 +182,10 @@ async def meta_get_ad_creatives(
 @mcp.tool()
 @meta_api_tool
 async def meta_create_ad(
-    account_id: str,
     name: str,
     adset_id: str,
     creative_id: str,
+    account_id: Optional[str] = None,
     access_token: Optional[str] = None,
     status: str = "PAUSED",
     bid_amount: Optional[int] = None,
@@ -194,11 +197,12 @@ async def meta_create_ad(
     in the specified ad set. New ads are created in PAUSED status by default.
 
     Args:
-        account_id: Meta Ads account ID (format: act_XXXXXXXXX).
         name: Ad name (required).
         adset_id: Ad set ID where this ad will be placed (required).
         creative_id: ID of an existing creative to use (required).
             Use meta_create_creative() to create a creative first.
+        account_id: Meta Ads account ID (format: act_XXXXXXXXX).
+            Uses default from config if not provided.
         access_token: Meta API access token (uses cached token if not provided).
         status: Initial status (default: PAUSED).
         bid_amount: Optional bid amount in cents (overrides ad set bid).
@@ -222,8 +226,9 @@ async def meta_create_ad(
         ... )
         >>> print(f"Created ad: {result['id']}")
     """
+    account_id = account_id or get_default_account_id()
     if not account_id:
-        return {"error": {"message": "account_id is required"}}
+        return {"error": {"message": "account_id is required - configure default_account_id in meta-ads.yaml"}}
     if not name:
         return {"error": {"message": "name is required"}}
     if not adset_id:
