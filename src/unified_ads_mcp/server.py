@@ -13,7 +13,7 @@ Authentication is handled automatically via browser-based OAuth when needed.
 import sys
 from fastmcp import FastMCP
 
-# Initialize the MCP server
+# Initialize the MCP server first (must be before tool imports)
 mcp = FastMCP(
     name="Unified Ads MCP",
     instructions="""
@@ -44,6 +44,16 @@ mcp = FastMCP(
     4. Run queries/get insights for reporting
     """,
 )
+
+# Import tool modules to register them with @mcp.tool() decorators
+# These imports MUST come after mcp is defined
+from .google import campaigns as google_campaigns  # noqa: E402, F401
+from .google import reporting as google_reporting  # noqa: E402, F401
+from .google import ad_groups as google_ad_groups  # noqa: E402, F401
+from .google import ads as google_ads  # noqa: E402, F401
+from .google import keywords as google_keywords  # noqa: E402, F401
+from .meta import campaigns as meta_campaigns  # noqa: E402, F401
+from .meta import insights as meta_insights  # noqa: E402, F401
 
 
 def main():
