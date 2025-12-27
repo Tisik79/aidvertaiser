@@ -305,6 +305,9 @@ def google_create_campaign(
         )
         campaign.status = get_enum_value(client, "CampaignStatusEnum", status)
 
+        # EU accounts require this field
+        campaign.contains_eu_political_advertising = False
+
         if start_date:
             campaign.start_date = start_date.replace("-", "")
         if end_date:
