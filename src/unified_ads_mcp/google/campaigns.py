@@ -315,8 +315,13 @@ def google_create_campaign(
         if end_date:
             campaign.end_date = end_date.replace("-", "")
 
-        # Set bidding strategy
-        if target_spend:
+        # Set bidding strategy based on campaign type
+        # Performance Max campaigns require maximize_conversions or maximize_conversion_value
+        # target_spend is only valid for Search, Display, and some other campaign types
+        if channel_type.upper() == "PERFORMANCE_MAX":
+            # Performance Max requires maximize_conversions bidding
+            campaign.maximize_conversions.target_cpa_micros = 0
+        elif target_spend:
             campaign.target_spend.target_spend_micros = 0  # Maximize clicks
 
         campaign_response = campaign_service.mutate_campaigns(
