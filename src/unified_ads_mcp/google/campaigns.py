@@ -287,6 +287,9 @@ def google_create_campaign(
         campaign_budget.name = f"{name} Budget"
         campaign_budget.amount_micros = budget_micros
         campaign_budget.delivery_method = client.enums.BudgetDeliveryMethodEnum.STANDARD
+        # Performance Max campaigns require non-shared budgets
+        if channel_type.upper() == "PERFORMANCE_MAX":
+            campaign_budget.explicitly_shared = False
 
         budget_response = campaign_budget_service.mutate_campaign_budgets(
             customer_id=customer_id,
