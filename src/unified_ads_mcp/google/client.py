@@ -298,6 +298,36 @@ def clean_customer_id(customer_id: str) -> str:
     return customer_id.replace("-", "").replace(" ", "").strip()
 
 
+def micros_to_currency(micros: int) -> float:
+    """Converts micros to currency (dollars/euros/etc.).
+
+    Google Ads API returns monetary values in micros where 1,000,000 micros = 1 unit of currency.
+    This function converts to a human-readable decimal value.
+
+    Args:
+        micros: The value in micros.
+
+    Returns:
+        The value in currency units (e.g., dollars), rounded to 2 decimal places.
+    """
+    return round(micros / 1_000_000, 2)
+
+
+def currency_to_micros(amount: float) -> int:
+    """Converts currency amount to micros for the Google Ads API.
+
+    Google Ads API expects monetary values in micros where 1,000,000 micros = 1 unit of currency.
+    This function converts a human-readable decimal value to micros.
+
+    Args:
+        amount: The value in currency units (e.g., dollars).
+
+    Returns:
+        The value in micros as an integer.
+    """
+    return int(amount * 1_000_000)
+
+
 def reset_client_factory() -> None:
     """Reset the global client factory (useful for testing)."""
     global _factory

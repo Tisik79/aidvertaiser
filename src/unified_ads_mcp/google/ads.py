@@ -10,7 +10,7 @@ from google.ads.googleads.errors import GoogleAdsException
 from mcp.server.fastmcp.exceptions import ToolError
 
 from ..server import mcp
-from .client import get_google_ads_client, clean_customer_id, format_error, get_default_customer_id, get_enum_name, get_enum_value
+from .client import get_google_ads_client, clean_customer_id, format_error, get_default_customer_id, get_enum_name, get_enum_value, micros_to_currency
 
 
 @mcp.tool()
@@ -39,7 +39,7 @@ def google_list_ads(
             - final_urls: List of final URLs
             - impressions: Total impressions
             - clicks: Total clicks
-            - cost_micros: Total cost in micros
+            - cost: Total cost in account currency
             - conversions: Total conversions
 
     Raises:
@@ -103,7 +103,7 @@ def google_list_ads(
                     "final_urls": list(row.ad_group_ad.ad.final_urls),
                     "impressions": row.metrics.impressions,
                     "clicks": row.metrics.clicks,
-                    "cost_micros": row.metrics.cost_micros,
+                    "cost": micros_to_currency(row.metrics.cost_micros),
                     "conversions": row.metrics.conversions,
                 }
 
@@ -146,7 +146,7 @@ def google_get_ad(
             - final_urls: List of final URLs
             - headlines: List of headlines (for RSA)
             - descriptions: List of descriptions (for RSA)
-            - impressions, clicks, cost_micros, conversions: Metrics
+            - impressions, clicks, cost, conversions: Metrics
 
     Raises:
         ToolError: If the ad is not found or API request fails.
@@ -206,10 +206,10 @@ def google_get_ad(
                     "tracking_url_template": row.ad_group_ad.ad.tracking_url_template or None,
                     "impressions": row.metrics.impressions,
                     "clicks": row.metrics.clicks,
-                    "cost_micros": row.metrics.cost_micros,
+                    "cost": micros_to_currency(row.metrics.cost_micros),
                     "conversions": row.metrics.conversions,
                     "ctr": row.metrics.ctr,
-                    "average_cpc": row.metrics.average_cpc,
+                    "average_cpc": micros_to_currency(row.metrics.average_cpc),
                 }
 
                 # Add RSA-specific fields

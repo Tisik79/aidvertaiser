@@ -10,7 +10,7 @@ from google.ads.googleads.errors import GoogleAdsException
 from mcp.server.fastmcp.exceptions import ToolError
 
 from ..server import mcp
-from .client import get_google_ads_client, clean_customer_id, format_error, get_default_customer_id, get_enum_name, get_enum_value
+from .client import get_google_ads_client, clean_customer_id, format_error, get_default_customer_id, get_enum_name, get_enum_value, micros_to_currency, currency_to_micros
 
 
 @mcp.tool()
@@ -36,10 +36,10 @@ def google_list_ad_groups(
             - status: Ad group status
             - campaign_id: Parent campaign ID
             - campaign_name: Parent campaign name
-            - cpc_bid_micros: CPC bid in micros
+            - cpc_bid: CPC bid in account currency
             - impressions: Total impressions
             - clicks: Total clicks
-            - cost_micros: Total cost in micros
+            - cost: Total cost in account currency
             - conversions: Total conversions
 
     Raises:
@@ -92,12 +92,12 @@ def google_list_ad_groups(
                     "name": row.ad_group.name,
                     "status": get_enum_name(client, "AdGroupStatusEnum", row.ad_group.status),
                     "type": get_enum_name(client, "AdGroupTypeEnum", row.ad_group.type_),
-                    "cpc_bid_micros": row.ad_group.cpc_bid_micros,
+                    "cpc_bid": micros_to_currency(row.ad_group.cpc_bid_micros),
                     "campaign_id": str(row.campaign.id),
                     "campaign_name": row.campaign.name,
                     "impressions": row.metrics.impressions,
                     "clicks": row.metrics.clicks,
-                    "cost_micros": row.metrics.cost_micros,
+                    "cost": micros_to_currency(row.metrics.cost_micros),
                     "conversions": row.metrics.conversions,
                 })
 
@@ -128,15 +128,15 @@ def google_get_ad_group(
             - name: Ad group name
             - status: Ad group status
             - type: Ad group type
-            - cpc_bid_micros: CPC bid in micros
-            - cpm_bid_micros: CPM bid in micros
+            - cpc_bid: CPC bid in account currency
+            - cpm_bid: CPM bid in account currency
             - campaign_id: Parent campaign ID
             - campaign_name: Parent campaign name
             - impressions: Total impressions
             - clicks: Total clicks
-            - cost_micros: Total cost
+            - cost: Total cost in account currency
             - conversions: Total conversions
-            - average_cpc: Average CPC
+            - average_cpc: Average CPC in account currency
 
     Raises:
         ToolError: If the ad group is not found or API request fails.
@@ -181,17 +181,17 @@ def google_get_ad_group(
                     "name": row.ad_group.name,
                     "status": get_enum_name(client, "AdGroupStatusEnum", row.ad_group.status),
                     "type": get_enum_name(client, "AdGroupTypeEnum", row.ad_group.type_),
-                    "cpc_bid_micros": row.ad_group.cpc_bid_micros,
-                    "cpm_bid_micros": row.ad_group.cpm_bid_micros,
-                    "effective_target_cpa_micros": row.ad_group.effective_target_cpa_micros,
+                    "cpc_bid": micros_to_currency(row.ad_group.cpc_bid_micros),
+                    "cpm_bid": micros_to_currency(row.ad_group.cpm_bid_micros),
+                    "effective_target_cpa": micros_to_currency(row.ad_group.effective_target_cpa_micros),
                     "target_roas": row.ad_group.target_roas,
                     "campaign_id": str(row.campaign.id),
                     "campaign_name": row.campaign.name,
                     "impressions": row.metrics.impressions,
                     "clicks": row.metrics.clicks,
-                    "cost_micros": row.metrics.cost_micros,
+                    "cost": micros_to_currency(row.metrics.cost_micros),
                     "conversions": row.metrics.conversions,
-                    "average_cpc": row.metrics.average_cpc,
+                    "average_cpc": micros_to_currency(row.metrics.average_cpc),
                 }
 
         raise ToolError(f"Ad group {ad_group_id} not found")
@@ -204,7 +204,7 @@ def google_get_ad_group(
 def google_create_ad_group(
     campaign_id: str,
     name: str,
-    cpc_bid_micros: int,
+    cpc_bid: float,
     customer_id: Optional[str] = None,
     status: str = "ENABLED",
     ad_group_type: str = "SEARCH_STANDARD",
@@ -215,7 +215,7 @@ def google_create_ad_group(
     Args:
         campaign_id: The parent campaign ID.
         name: The ad group name.
-        cpc_bid_micros: Default CPC bid in micros (1,000,000 micros = $1).
+        cpc_bid: Default CPC bid in account currency (e.g., 1.50 for $1.50).
         customer_id: The Google Ads customer ID. Uses default from config if not provided.
         status: Initial status - ENABLED (default) or PAUSED.
         ad_group_type: Ad group type. Options:
@@ -250,7 +250,7 @@ def google_create_ad_group(
         ad_group.campaign = f"customers/{customer_id}/campaigns/{campaign_id}"
         ad_group.status = get_enum_value(client, "AdGroupStatusEnum", status)
         ad_group.type_ = get_enum_value(client, "AdGroupTypeEnum", ad_group_type)
-        ad_group.cpc_bid_micros = cpc_bid_micros
+        ad_group.cpc_bid_micros = currency_to_micros(cpc_bid)
 
         response = ad_group_service.mutate_ad_groups(
             customer_id=customer_id,
@@ -273,7 +273,7 @@ def google_update_ad_group(
     customer_id: Optional[str] = None,
     name: Optional[str] = None,
     status: Optional[str] = None,
-    cpc_bid_micros: Optional[int] = None,
+    cpc_bid: Optional[float] = None,
     login_customer_id: Optional[str] = None,
 ) -> dict[str, Any]:
     """Updates an existing ad group.
@@ -283,7 +283,7 @@ def google_update_ad_group(
         customer_id: The Google Ads customer ID. Uses default from config if not provided.
         name: Optional new ad group name.
         status: Optional new status - ENABLED, PAUSED, or REMOVED.
-        cpc_bid_micros: Optional new CPC bid in micros.
+        cpc_bid: Optional new CPC bid in account currency (e.g., 1.50 for $1.50).
         login_customer_id: Optional MCC account ID if accessing through
             a manager account.
 
@@ -317,8 +317,8 @@ def google_update_ad_group(
             ad_group.status = get_enum_value(client, "AdGroupStatusEnum", status)
             field_mask.append("status")
 
-        if cpc_bid_micros is not None:
-            ad_group.cpc_bid_micros = cpc_bid_micros
+        if cpc_bid is not None:
+            ad_group.cpc_bid_micros = currency_to_micros(cpc_bid)
             field_mask.append("cpc_bid_micros")
 
         if not field_mask:

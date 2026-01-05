@@ -10,7 +10,7 @@ from google.ads.googleads.errors import GoogleAdsException
 from mcp.server.fastmcp.exceptions import ToolError
 
 from ..server import mcp
-from .client import get_google_ads_client, clean_customer_id, format_error, get_default_customer_id, get_enum_name, get_enum_value
+from .client import get_google_ads_client, clean_customer_id, format_error, get_default_customer_id, get_enum_name, get_enum_value, micros_to_currency, currency_to_micros
 
 
 @mcp.tool()
@@ -37,10 +37,10 @@ def google_list_keywords(
             - keyword_text: The keyword text
             - match_type: Match type (EXACT, PHRASE, BROAD)
             - status: Keyword status
-            - cpc_bid_micros: CPC bid in micros
+            - cpc_bid: CPC bid in account currency
             - impressions: Total impressions
             - clicks: Total clicks
-            - cost_micros: Total cost in micros
+            - cost: Total cost in account currency
             - conversions: Total conversions
             - quality_score: Quality score (if available)
 
@@ -102,11 +102,11 @@ def google_list_keywords(
                     "keyword_text": row.ad_group_criterion.keyword.text,
                     "match_type": get_enum_name(client, "KeywordMatchTypeEnum", row.ad_group_criterion.keyword.match_type),
                     "status": get_enum_name(client, "AdGroupCriterionStatusEnum", row.ad_group_criterion.status),
-                    "cpc_bid_micros": row.ad_group_criterion.cpc_bid_micros,
+                    "cpc_bid": micros_to_currency(row.ad_group_criterion.cpc_bid_micros),
                     "quality_score": row.ad_group_criterion.quality_info.quality_score or None,
                     "impressions": row.metrics.impressions,
                     "clicks": row.metrics.clicks,
-                    "cost_micros": row.metrics.cost_micros,
+                    "cost": micros_to_currency(row.metrics.cost_micros),
                     "conversions": row.metrics.conversions,
                 })
 
@@ -138,7 +138,7 @@ def google_get_keyword(
             - keyword_text: The keyword text
             - match_type: Match type
             - status: Keyword status
-            - cpc_bid_micros: CPC bid
+            - cpc_bid: CPC bid in account currency
             - quality_score: Quality score
             - creative_quality_score: Creative quality
             - post_click_quality_score: Post-click quality
@@ -201,7 +201,7 @@ def google_get_keyword(
                     "keyword_text": row.ad_group_criterion.keyword.text,
                     "match_type": get_enum_name(client, "KeywordMatchTypeEnum", row.ad_group_criterion.keyword.match_type),
                     "status": get_enum_name(client, "AdGroupCriterionStatusEnum", row.ad_group_criterion.status),
-                    "cpc_bid_micros": row.ad_group_criterion.cpc_bid_micros,
+                    "cpc_bid": micros_to_currency(row.ad_group_criterion.cpc_bid_micros),
                     "final_urls": list(row.ad_group_criterion.final_urls),
                     "quality_score": quality_info.quality_score or None,
                     "creative_quality_score": get_enum_name(client, "QualityScoreBucketEnum", quality_info.creative_quality_score) if quality_info.creative_quality_score else None,
@@ -209,10 +209,10 @@ def google_get_keyword(
                     "search_predicted_ctr": get_enum_name(client, "QualityScoreBucketEnum", quality_info.search_predicted_ctr) if quality_info.search_predicted_ctr else None,
                     "impressions": row.metrics.impressions,
                     "clicks": row.metrics.clicks,
-                    "cost_micros": row.metrics.cost_micros,
+                    "cost": micros_to_currency(row.metrics.cost_micros),
                     "conversions": row.metrics.conversions,
                     "ctr": row.metrics.ctr,
-                    "average_cpc": row.metrics.average_cpc,
+                    "average_cpc": micros_to_currency(row.metrics.average_cpc),
                 }
 
         raise ToolError(f"Keyword {keyword_id} not found in ad group {ad_group_id}")
@@ -227,7 +227,7 @@ def google_add_keywords(
     keywords: list[str],
     customer_id: Optional[str] = None,
     match_type: str = "BROAD",
-    cpc_bid_micros: Optional[int] = None,
+    cpc_bid: Optional[float] = None,
     status: str = "ENABLED",
     login_customer_id: Optional[str] = None,
 ) -> dict[str, Any]:
@@ -241,7 +241,7 @@ def google_add_keywords(
             - BROAD: Broad match (default)
             - PHRASE: Phrase match
             - EXACT: Exact match
-        cpc_bid_micros: Optional CPC bid in micros (uses ad group default if not set).
+        cpc_bid: Optional CPC bid in account currency (uses ad group default if not set).
         status: Initial status - ENABLED (default) or PAUSED.
         login_customer_id: Optional MCC account ID if accessing through
             a manager account.
@@ -278,8 +278,8 @@ def google_add_keywords(
             criterion.keyword.text = keyword_text
             criterion.keyword.match_type = get_enum_value(client, "KeywordMatchTypeEnum", match_type)
 
-            if cpc_bid_micros is not None:
-                criterion.cpc_bid_micros = cpc_bid_micros
+            if cpc_bid is not None:
+                criterion.cpc_bid_micros = currency_to_micros(cpc_bid)
 
             operations.append(operation)
 
@@ -309,7 +309,7 @@ def google_update_keyword(
     keyword_id: str,
     customer_id: Optional[str] = None,
     status: Optional[str] = None,
-    cpc_bid_micros: Optional[int] = None,
+    cpc_bid: Optional[float] = None,
     final_urls: Optional[list[str]] = None,
     login_customer_id: Optional[str] = None,
 ) -> dict[str, Any]:
@@ -323,7 +323,7 @@ def google_update_keyword(
         ad_group_id: The ad group ID containing the keyword.
         keyword_id: The keyword criterion ID to update.
         status: Optional new status - ENABLED, PAUSED, or REMOVED.
-        cpc_bid_micros: Optional new CPC bid in micros.
+        cpc_bid: Optional new CPC bid in account currency (e.g., 1.50 for $1.50).
         final_urls: Optional list of final URLs for the keyword.
         login_customer_id: Optional MCC account ID if accessing through
             a manager account.
@@ -356,8 +356,8 @@ def google_update_keyword(
             criterion.status = get_enum_value(client, "AdGroupCriterionStatusEnum", status)
             field_mask.append("status")
 
-        if cpc_bid_micros is not None:
-            criterion.cpc_bid_micros = cpc_bid_micros
+        if cpc_bid is not None:
+            criterion.cpc_bid_micros = currency_to_micros(cpc_bid)
             field_mask.append("cpc_bid_micros")
 
         if final_urls is not None:

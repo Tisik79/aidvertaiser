@@ -10,7 +10,7 @@ from google.ads.googleads.errors import GoogleAdsException
 from mcp.server.fastmcp.exceptions import ToolError
 
 from ..server import mcp
-from .client import get_google_ads_client, clean_customer_id, format_error, get_default_customer_id, get_enum_name, get_enum_value
+from .client import get_google_ads_client, clean_customer_id, format_error, get_default_customer_id, get_enum_name, get_enum_value, micros_to_currency, currency_to_micros
 
 
 @mcp.tool()
@@ -61,12 +61,12 @@ def google_list_campaigns(
             - name: Campaign name
             - status: Campaign status (ENABLED, PAUSED, REMOVED)
             - channel_type: Advertising channel (SEARCH, DISPLAY, etc.)
-            - budget_micros: Daily budget in micros (1,000,000 = $1)
+            - budget: Daily budget in account currency
             - start_date: Campaign start date
             - end_date: Campaign end date
             - impressions: Total impressions
             - clicks: Total clicks
-            - cost_micros: Total cost in micros
+            - cost: Total cost in account currency
 
     Raises:
         ToolError: If the API request fails.
@@ -112,12 +112,12 @@ def google_list_campaigns(
                     "name": row.campaign.name,
                     "status": get_enum_name(client, "CampaignStatusEnum", row.campaign.status),
                     "channel_type": get_enum_name(client, "AdvertisingChannelTypeEnum", row.campaign.advertising_channel_type),
-                    "budget_micros": row.campaign_budget.amount_micros,
+                    "budget": micros_to_currency(row.campaign_budget.amount_micros),
                     "start_date": row.campaign.start_date or None,
                     "end_date": row.campaign.end_date or None,
                     "impressions": row.metrics.impressions,
                     "clicks": row.metrics.clicks,
-                    "cost_micros": row.metrics.cost_micros,
+                    "cost": micros_to_currency(row.metrics.cost_micros),
                 })
 
         return campaigns
@@ -148,7 +148,7 @@ def google_get_campaign(
             - status: Campaign status
             - channel_type: Advertising channel type
             - channel_sub_type: Advertising channel sub-type
-            - budget_micros: Daily budget in micros
+            - budget: Daily budget in account currency
             - budget_delivery_method: Budget delivery method
             - start_date: Campaign start date
             - end_date: Campaign end date
@@ -157,7 +157,7 @@ def google_get_campaign(
             - target_content_network: Whether targeting Display Network
             - impressions: Total impressions
             - clicks: Total clicks
-            - cost_micros: Total cost in micros
+            - cost: Total cost in account currency
             - conversions: Total conversions
             - conversions_value: Total conversion value
 
@@ -208,7 +208,7 @@ def google_get_campaign(
                     "status": get_enum_name(client, "CampaignStatusEnum", row.campaign.status),
                     "channel_type": get_enum_name(client, "AdvertisingChannelTypeEnum", row.campaign.advertising_channel_type),
                     "channel_sub_type": get_enum_name(client, "AdvertisingChannelSubTypeEnum", row.campaign.advertising_channel_sub_type),
-                    "budget_micros": row.campaign_budget.amount_micros,
+                    "budget": micros_to_currency(row.campaign_budget.amount_micros),
                     "budget_delivery_method": get_enum_name(client, "BudgetDeliveryMethodEnum", row.campaign_budget.delivery_method),
                     "start_date": row.campaign.start_date or None,
                     "end_date": row.campaign.end_date or None,
@@ -217,7 +217,7 @@ def google_get_campaign(
                     "target_content_network": row.campaign.network_settings.target_content_network,
                     "impressions": row.metrics.impressions,
                     "clicks": row.metrics.clicks,
-                    "cost_micros": row.metrics.cost_micros,
+                    "cost": micros_to_currency(row.metrics.cost_micros),
                     "conversions": row.metrics.conversions,
                     "conversions_value": row.metrics.conversions_value,
                 }
@@ -231,7 +231,7 @@ def google_get_campaign(
 @mcp.tool()
 def google_create_campaign(
     name: str,
-    budget_micros: int,
+    budget: float,
     customer_id: Optional[str] = None,
     channel_type: str = "SEARCH",
     status: str = "PAUSED",
@@ -244,7 +244,7 @@ def google_create_campaign(
 
     Args:
         name: The campaign name.
-        budget_micros: Daily budget in micros (1,000,000 micros = $1 USD).
+        budget: Daily budget in account currency (e.g., 10.00 for $10 USD).
         customer_id: The Google Ads customer ID (digits only, no dashes).
             Uses default from config if not provided.
         channel_type: Advertising channel type. Options:
@@ -285,7 +285,7 @@ def google_create_campaign(
         campaign_budget_operation = client.get_type("CampaignBudgetOperation")
         campaign_budget = campaign_budget_operation.create
         campaign_budget.name = f"{name} Budget"
-        campaign_budget.amount_micros = budget_micros
+        campaign_budget.amount_micros = currency_to_micros(budget)
         campaign_budget.delivery_method = client.enums.BudgetDeliveryMethodEnum.STANDARD
         # Performance Max campaigns require non-shared budgets
         if channel_type.upper() == "PERFORMANCE_MAX":

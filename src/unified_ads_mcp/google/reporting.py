@@ -12,7 +12,7 @@ from mcp.server.fastmcp.exceptions import ToolError
 import proto
 
 from ..server import mcp
-from .client import get_google_ads_client, clean_customer_id, format_error, format_value, get_default_customer_id, get_enum_name
+from .client import get_google_ads_client, clean_customer_id, format_error, format_value, get_default_customer_id, get_enum_name, micros_to_currency
 
 
 def _preprocess_gaql(query: str) -> str:
@@ -147,7 +147,7 @@ def google_get_campaign_performance(
             - channel_type: Advertising channel
             - impressions: Total impressions
             - clicks: Total clicks
-            - cost_micros: Total cost in micros
+            - cost: Total cost in account currency
             - conversions: Total conversions
             - conversion_value: Total conversion value
             - ctr: Click-through rate
@@ -208,12 +208,12 @@ def google_get_campaign_performance(
                     "channel_type": get_enum_name(client, "AdvertisingChannelTypeEnum", row.campaign.advertising_channel_type),
                     "impressions": row.metrics.impressions,
                     "clicks": row.metrics.clicks,
-                    "cost_micros": row.metrics.cost_micros,
+                    "cost": micros_to_currency(row.metrics.cost_micros),
                     "conversions": row.metrics.conversions,
                     "conversion_value": row.metrics.conversions_value,
                     "ctr": row.metrics.ctr,
-                    "average_cpc": row.metrics.average_cpc,
-                    "cost_per_conversion": row.metrics.cost_per_conversion,
+                    "average_cpc": micros_to_currency(row.metrics.average_cpc),
+                    "cost_per_conversion": micros_to_currency(row.metrics.cost_per_conversion),
                 })
 
         return results
@@ -252,7 +252,7 @@ def google_get_keyword_performance(
             - campaign_name: Parent campaign name
             - ad_group_id: Parent ad group ID
             - ad_group_name: Parent ad group name
-            - impressions, clicks, cost_micros, conversions: Metrics
+            - impressions, clicks, cost, conversions: Metrics
             - ctr, average_cpc, quality_score: Performance metrics
 
     Raises:
@@ -316,10 +316,10 @@ def google_get_keyword_performance(
                     "ad_group_name": row.ad_group.name,
                     "impressions": row.metrics.impressions,
                     "clicks": row.metrics.clicks,
-                    "cost_micros": row.metrics.cost_micros,
+                    "cost": micros_to_currency(row.metrics.cost_micros),
                     "conversions": row.metrics.conversions,
                     "ctr": row.metrics.ctr,
-                    "average_cpc": row.metrics.average_cpc,
+                    "average_cpc": micros_to_currency(row.metrics.average_cpc),
                 })
 
         return results
@@ -354,7 +354,7 @@ def google_get_ad_performance(
             - status: Ad status
             - campaign_id/name: Parent campaign
             - ad_group_id/name: Parent ad group
-            - impressions, clicks, cost_micros, conversions: Metrics
+            - impressions, clicks, cost, conversions: Metrics
             - ctr, average_cpc: Performance metrics
 
     Raises:
@@ -412,10 +412,10 @@ def google_get_ad_performance(
                     "ad_group_name": row.ad_group.name,
                     "impressions": row.metrics.impressions,
                     "clicks": row.metrics.clicks,
-                    "cost_micros": row.metrics.cost_micros,
+                    "cost": micros_to_currency(row.metrics.cost_micros),
                     "conversions": row.metrics.conversions,
                     "ctr": row.metrics.ctr,
-                    "average_cpc": row.metrics.average_cpc,
+                    "average_cpc": micros_to_currency(row.metrics.average_cpc),
                 })
 
         return results
@@ -453,7 +453,7 @@ def google_get_search_terms_report(
             - search_term: The actual search query
             - keyword_text: The matched keyword
             - match_type: How the keyword was matched
-            - impressions, clicks, cost_micros, conversions: Metrics
+            - impressions, clicks, cost, conversions: Metrics
             - campaign/ad_group info
 
     Raises:
@@ -511,7 +511,7 @@ def google_get_search_terms_report(
                     "ad_group_name": row.ad_group.name,
                     "impressions": row.metrics.impressions,
                     "clicks": row.metrics.clicks,
-                    "cost_micros": row.metrics.cost_micros,
+                    "cost": micros_to_currency(row.metrics.cost_micros),
                     "conversions": row.metrics.conversions,
                     "ctr": row.metrics.ctr,
                 })
@@ -547,7 +547,7 @@ def google_get_account_summary(
             - total_campaigns: Number of active campaigns
             - total_impressions: Sum of all impressions
             - total_clicks: Sum of all clicks
-            - total_cost_micros: Sum of all costs
+            - total_cost: Sum of all costs in account currency
             - total_conversions: Sum of all conversions
             - average_ctr: Overall CTR
             - average_cpc: Overall average CPC
@@ -617,12 +617,12 @@ def google_get_account_summary(
             "total_campaigns": campaign_count,
             "total_impressions": total_impressions,
             "total_clicks": total_clicks,
-            "total_cost_micros": total_cost_micros,
+            "total_cost": micros_to_currency(total_cost_micros),
             "total_conversions": total_conversions,
             "total_conversion_value": total_conversion_value,
             "average_ctr": round(avg_ctr, 2),
-            "average_cpc_micros": int(avg_cpc),
-            "cost_per_conversion_micros": int(cost_per_conv),
+            "average_cpc": micros_to_currency(int(avg_cpc)),
+            "cost_per_conversion": micros_to_currency(int(cost_per_conv)),
         }
 
     except GoogleAdsException as e:
