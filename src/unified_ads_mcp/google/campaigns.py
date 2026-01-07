@@ -344,6 +344,197 @@ def google_create_campaign(
 
 
 @mcp.tool()
+def google_create_pmax_campaign(
+    name: str,
+    budget: float,
+    business_name: str,
+    logo_image_data: str,
+    customer_id: Optional[str] = None,
+    status: str = "PAUSED",
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    login_customer_id: Optional[str] = None,
+) -> dict[str, Any]:
+    """Creates a Performance Max campaign with brand assets atomically.
+
+    This function creates the campaign, budget, business name asset, logo asset,
+    and links them all in a single atomic API call. This is required for accounts
+    with Brand Guidelines enabled, which mandate BUSINESS_NAME and LOGO assets
+    be linked at campaign creation time.
+
+    Args:
+        name: The campaign name.
+        budget: Daily budget in account currency (e.g., 10.00 for $10 USD).
+        business_name: Business name text (required for Brand Guidelines).
+        logo_image_data: Base64 encoded square logo image (1:1 ratio, min 128x128,
+            recommended 1200x1200). PNG, JPG, or GIF format.
+        customer_id: The Google Ads customer ID (digits only, no dashes).
+            Uses default from config if not provided.
+        status: Initial campaign status - ENABLED or PAUSED (default).
+        start_date: Optional start date in YYYY-MM-DD format.
+        end_date: Optional end date in YYYY-MM-DD format.
+        login_customer_id: Optional MCC account ID if accessing through
+            a manager account.
+
+    Returns:
+        dict: Created campaign details:
+            - campaign_id: The new campaign ID
+            - campaign_resource_name: Full resource name
+            - budget_resource_name: Budget resource name
+            - business_name_asset_resource_name: Business name asset resource name
+            - logo_asset_resource_name: Logo asset resource name
+            - status: Creation status
+
+    Raises:
+        ToolError: If the API request fails.
+
+    Note:
+        After creating the campaign, you need to create an Asset Group with
+        headlines, descriptions, and marketing images using google_create_asset_group
+        before the campaign can serve ads.
+    """
+    import base64
+
+    try:
+        client = get_google_ads_client(login_customer_id=login_customer_id)
+        customer_id = clean_customer_id(customer_id or get_default_customer_id() or "")
+        if not customer_id:
+            raise ToolError("No customer_id provided and no default configured")
+
+        # Decode logo image
+        try:
+            logo_bytes = base64.b64decode(logo_image_data)
+        except Exception as e:
+            raise ToolError(f"Invalid base64 logo image data: {e}")
+
+        # Services
+        ga_service = client.get_service("GoogleAdsService")
+        campaign_budget_service = client.get_service("CampaignBudgetService")
+        campaign_service = client.get_service("CampaignService")
+        asset_service = client.get_service("AssetService")
+        campaign_asset_service = client.get_service("CampaignAssetService")
+
+        # Temporary resource IDs for atomic creation
+        BUDGET_TEMP_ID = -1
+        CAMPAIGN_TEMP_ID = -2
+        BUSINESS_NAME_ASSET_TEMP_ID = -3
+        LOGO_ASSET_TEMP_ID = -4
+
+        mutate_operations = []
+
+        # 1. Create campaign budget
+        budget_op = client.get_type("MutateOperation")
+        campaign_budget = budget_op.campaign_budget_operation.create
+        campaign_budget.resource_name = campaign_budget_service.campaign_budget_path(
+            customer_id, BUDGET_TEMP_ID
+        )
+        campaign_budget.name = f"{name} Budget"
+        campaign_budget.amount_micros = currency_to_micros(budget)
+        campaign_budget.delivery_method = client.enums.BudgetDeliveryMethodEnum.STANDARD
+        campaign_budget.explicitly_shared = False  # Required for P-Max
+        mutate_operations.append(budget_op)
+
+        # 2. Create campaign
+        campaign_op = client.get_type("MutateOperation")
+        campaign = campaign_op.campaign_operation.create
+        campaign.resource_name = campaign_service.campaign_path(
+            customer_id, CAMPAIGN_TEMP_ID
+        )
+        campaign.name = name
+        campaign.campaign_budget = campaign_budget_service.campaign_budget_path(
+            customer_id, BUDGET_TEMP_ID
+        )
+        campaign.advertising_channel_type = client.enums.AdvertisingChannelTypeEnum.PERFORMANCE_MAX
+        campaign.status = get_enum_value(client, "CampaignStatusEnum", status)
+        # Performance Max requires maximize_conversions bidding
+        campaign.maximize_conversions.target_cpa_micros = 0
+        # EU accounts require this field
+        campaign.contains_eu_political_advertising = get_enum_value(
+            client, "EuPoliticalAdvertisingStatusEnum", "DOES_NOT_CONTAIN_EU_POLITICAL_ADVERTISING"
+        )
+        if start_date:
+            campaign.start_date = start_date.replace("-", "")
+        if end_date:
+            campaign.end_date = end_date.replace("-", "")
+        mutate_operations.append(campaign_op)
+
+        # 3. Create business name text asset
+        bn_asset_op = client.get_type("MutateOperation")
+        bn_asset = bn_asset_op.asset_operation.create
+        bn_asset.resource_name = asset_service.asset_path(
+            customer_id, BUSINESS_NAME_ASSET_TEMP_ID
+        )
+        bn_asset.text_asset.text = business_name
+        bn_asset.name = f"{name} - Business Name"
+        mutate_operations.append(bn_asset_op)
+
+        # 4. Create logo image asset
+        logo_asset_op = client.get_type("MutateOperation")
+        logo_asset = logo_asset_op.asset_operation.create
+        logo_asset.resource_name = asset_service.asset_path(
+            customer_id, LOGO_ASSET_TEMP_ID
+        )
+        logo_asset.image_asset.data = logo_bytes
+        logo_asset.name = f"{name} - Logo"
+        mutate_operations.append(logo_asset_op)
+
+        # 5. Link business name asset to campaign
+        bn_link_op = client.get_type("MutateOperation")
+        bn_campaign_asset = bn_link_op.campaign_asset_operation.create
+        bn_campaign_asset.campaign = campaign_service.campaign_path(
+            customer_id, CAMPAIGN_TEMP_ID
+        )
+        bn_campaign_asset.asset = asset_service.asset_path(
+            customer_id, BUSINESS_NAME_ASSET_TEMP_ID
+        )
+        bn_campaign_asset.field_type = client.enums.AssetFieldTypeEnum.BUSINESS_NAME
+        mutate_operations.append(bn_link_op)
+
+        # 6. Link logo asset to campaign
+        logo_link_op = client.get_type("MutateOperation")
+        logo_campaign_asset = logo_link_op.campaign_asset_operation.create
+        logo_campaign_asset.campaign = campaign_service.campaign_path(
+            customer_id, CAMPAIGN_TEMP_ID
+        )
+        logo_campaign_asset.asset = asset_service.asset_path(
+            customer_id, LOGO_ASSET_TEMP_ID
+        )
+        logo_campaign_asset.field_type = client.enums.AssetFieldTypeEnum.LOGO
+        mutate_operations.append(logo_link_op)
+
+        # Execute atomic bulk mutate
+        response = ga_service.mutate(
+            customer_id=customer_id,
+            mutate_operations=mutate_operations,
+        )
+
+        # Extract resource names from response
+        result = {
+            "status": "created",
+        }
+
+        for op_response in response.mutate_operation_responses:
+            if op_response.HasField("campaign_budget_result"):
+                result["budget_resource_name"] = op_response.campaign_budget_result.resource_name
+            elif op_response.HasField("campaign_result"):
+                result["campaign_resource_name"] = op_response.campaign_result.resource_name
+                result["campaign_id"] = op_response.campaign_result.resource_name.split("/")[-1]
+            elif op_response.HasField("asset_result"):
+                resource_name = op_response.asset_result.resource_name
+                # We can't easily distinguish which asset is which from the response,
+                # but we track the order
+                if "business_name_asset_resource_name" not in result:
+                    result["business_name_asset_resource_name"] = resource_name
+                else:
+                    result["logo_asset_resource_name"] = resource_name
+
+        return result
+
+    except GoogleAdsException as e:
+        raise ToolError(format_error(e)) from e
+
+
+@mcp.tool()
 def google_update_campaign(
     campaign_id: str,
     customer_id: Optional[str] = None,
@@ -351,6 +542,8 @@ def google_update_campaign(
     status: Optional[str] = None,
     start_date: Optional[str] = None,
     end_date: Optional[str] = None,
+    target_content_network: Optional[bool] = None,
+    target_search_network: Optional[bool] = None,
     login_customer_id: Optional[str] = None,
 ) -> dict[str, Any]:
     """Updates an existing Google Ads campaign.
@@ -363,6 +556,9 @@ def google_update_campaign(
         status: Optional new status - ENABLED, PAUSED, or REMOVED.
         start_date: Optional new start date in YYYY-MM-DD format.
         end_date: Optional new end date in YYYY-MM-DD format.
+        target_content_network: Optional bool to enable/disable Display Network.
+            Set to False to disable Display Network (recommended for Search campaigns).
+        target_search_network: Optional bool to enable/disable Search Partners.
         login_customer_id: Optional MCC account ID if accessing through
             a manager account.
 
@@ -403,6 +599,14 @@ def google_update_campaign(
         if end_date is not None:
             campaign.end_date = end_date.replace("-", "")
             field_mask.append("end_date")
+
+        if target_content_network is not None:
+            campaign.network_settings.target_content_network = target_content_network
+            field_mask.append("network_settings.target_content_network")
+
+        if target_search_network is not None:
+            campaign.network_settings.target_search_network = target_search_network
+            field_mask.append("network_settings.target_search_network")
 
         if not field_mask:
             raise ToolError("No fields to update. Provide at least one field.")

@@ -12,7 +12,7 @@ from mcp.server.fastmcp.exceptions import ToolError
 import proto
 
 from ..server import mcp
-from .client import get_google_ads_client, clean_customer_id, format_error, format_value, get_default_customer_id, get_enum_name, micros_to_currency
+from .client import get_google_ads_client, clean_customer_id, format_error, format_value, get_default_customer_id, get_enum_name, micros_to_currency, get_customer_currency
 
 
 def _preprocess_gaql(query: str) -> str:
@@ -198,6 +198,9 @@ def google_get_campaign_performance(
             query=query,
         )
 
+        # Get currency code for the account
+        currency_code = get_customer_currency(customer_id, login_customer_id)
+
         results = []
         for batch in response:
             for row in batch.results:
@@ -214,6 +217,7 @@ def google_get_campaign_performance(
                     "ctr": row.metrics.ctr,
                     "average_cpc": micros_to_currency(row.metrics.average_cpc),
                     "cost_per_conversion": micros_to_currency(row.metrics.cost_per_conversion),
+                    "currency": currency_code,
                 })
 
         return results
@@ -611,9 +615,13 @@ def google_get_account_summary(
         )
         campaign_count = sum(1 for batch in campaign_response for _ in batch.results)
 
+        # Get currency code for the account
+        currency_code = get_customer_currency(customer_id, login_customer_id)
+
         return {
             "customer_id": customer_id,
             "date_range": date_range,
+            "currency": currency_code,
             "total_campaigns": campaign_count,
             "total_impressions": total_impressions,
             "total_clicks": total_clicks,

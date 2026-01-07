@@ -328,6 +328,41 @@ def currency_to_micros(amount: float) -> int:
     return int(amount * 1_000_000)
 
 
+def get_customer_currency(
+    customer_id: str,
+    login_customer_id: Optional[str] = None,
+) -> str:
+    """Gets the currency code for a Google Ads customer account.
+
+    Args:
+        customer_id: The Google Ads customer ID (digits only, no dashes).
+        login_customer_id: Optional MCC account ID if accessing through
+            a manager account.
+
+    Returns:
+        The currency code (e.g., 'CZK', 'USD', 'EUR').
+    """
+    try:
+        client = get_google_ads_client(login_customer_id=login_customer_id)
+        customer_id = clean_customer_id(customer_id)
+
+        ga_service = client.get_service("GoogleAdsService")
+        query = "SELECT customer.currency_code FROM customer LIMIT 1"
+
+        response = ga_service.search_stream(
+            customer_id=customer_id,
+            query=query,
+        )
+
+        for batch in response:
+            for row in batch.results:
+                return row.customer.currency_code
+
+        return "USD"  # Default fallback
+    except Exception:
+        return "USD"  # Default fallback on error
+
+
 def reset_client_factory() -> None:
     """Reset the global client factory (useful for testing)."""
     global _factory
