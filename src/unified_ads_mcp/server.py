@@ -30,15 +30,25 @@ mcp = FastMCP(
     GOOGLE ADS:
     - Configure via GOOGLE_ADS_CREDENTIALS env var or ~/google-ads.yaml
     - Requires developer_token, client_id, client_secret in config
+    - Set default_customer_id in config to avoid specifying customer_id on every call
+    - When default_customer_id is set, DO NOT list accounts - just use the tools directly
     - Use google_run_query for any GAQL queries
 
     META ADS:
     - Configure via META_APP_ID and META_APP_SECRET env vars
+    - Set META_DEFAULT_ACCOUNT_ID env var to avoid specifying account_id on every call
+    - When default account is set, DO NOT list accounts - just use the tools directly
     - Default app ID: 779761636818489
     - Tokens auto-refresh via browser OAuth when expired
 
+    IMPORTANT - DEFAULT ACCOUNTS:
+    When a default account is configured, you should NEVER call list_accounts first.
+    Just use the tools directly - they will use the default account automatically.
+    Only call list_accounts if the user explicitly asks to see their accounts or
+    if a tool fails because no account is configured.
+
     COMMON WORKFLOWS:
-    1. List accounts first to get customer_id/account_id
+    1. Use tools directly (they use default account if configured)
     2. List campaigns with optional status filter
     3. Create/update campaigns as needed
     4. Run queries/get insights for reporting
