@@ -446,6 +446,8 @@ def google_create_pmax_campaign(
         )
         campaign.advertising_channel_type = client.enums.AdvertisingChannelTypeEnum.PERFORMANCE_MAX
         campaign.status = get_enum_value(client, "CampaignStatusEnum", status)
+        # Enable brand guidelines for P-Max with brand assets at campaign level
+        campaign.brand_guidelines_enabled = True
         # Performance Max requires maximize_conversions bidding
         campaign.maximize_conversions.target_cpa_micros = 0
         # EU accounts require this field
