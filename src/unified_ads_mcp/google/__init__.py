@@ -44,6 +44,7 @@ from unified_ads_mcp.google import keywords
 from unified_ads_mcp.google import reporting
 from unified_ads_mcp.google import assets
 from unified_ads_mcp.google import asset_groups
+from unified_ads_mcp.google import conversions
 
 __all__ = [
     # Client factory and utilities
@@ -61,4 +62,5 @@ __all__ = [
     "reporting",
     "assets",
     "asset_groups",
+    "conversions",
 ]
