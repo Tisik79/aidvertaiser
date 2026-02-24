@@ -5,23 +5,24 @@ listing, creating, updating, and retrieving campaign details.
 """
 
 import json
-from typing import Optional, List, Dict, Any, Union
+from typing import Optional, List
 
 from ..server import mcp
+from ..config import only_default_account_enabled
 from .client import (
     make_api_request,
     meta_api_tool,
     ensure_account_prefix,
-    get_default_account_id,
+    resolve_account_id,
 )
 
+ONLY_DEFAULT_ACCOUNT = only_default_account_enabled()
 
-@mcp.tool()
+
+@mcp.tool(enabled=not ONLY_DEFAULT_ACCOUNT)
 @meta_api_tool
 async def meta_list_accounts(
-    access_token: Optional[str] = None,
-    user_id: str = "me",
-    limit: int = 200
+    access_token: Optional[str] = None, user_id: str = "me", limit: int = 200
 ) -> dict:
     """List all Meta Ads accounts accessible by the current user.
 
@@ -43,10 +44,16 @@ async def meta_list_accounts(
         >>> for account in result["data"]:
         ...     print(f"{account['name']}: {account['id']}")
     """
+    if ONLY_DEFAULT_ACCOUNT:
+        return {
+            "error": {
+                "message": "Account listing disabled because ONLY_DEFAULT_ACCOUNT is set"
+            }
+        }
     endpoint = f"{user_id}/adaccounts"
     params = {
         "fields": "id,name,account_id,account_status,amount_spent,balance,currency,age,business_city,business_country_code",
-        "limit": limit
+        "limit": limit,
     }
 
     data = await make_api_request(endpoint, access_token, params)
@@ -56,8 +63,7 @@ async def meta_list_accounts(
 @mcp.tool()
 @meta_api_tool
 async def meta_get_account_info(
-    account_id: Optional[str] = None,
-    access_token: Optional[str] = None
+    account_id: Optional[str] = None, access_token: Optional[str] = None
 ) -> dict:
     """Get detailed information about a specific Meta Ads account.
 
@@ -85,13 +91,16 @@ async def meta_get_account_info(
         >>> info = await meta_get_account_info("act_123456789")
         >>> print(f"Account: {info['name']}, Currency: {info['currency']}")
     """
-    account_id = account_id or get_default_account_id()
+    account_id = resolve_account_id(account_id)
     if not account_id:
+        details = "Please specify an account_id parameter or configure default_account_id in meta-ads.yaml or META_DEFAULT_ACCOUNT_ID"
+        if ONLY_DEFAULT_ACCOUNT:
+            details = "ONLY_DEFAULT_ACCOUNT is set; configure default_account_id in meta-ads.yaml or META_DEFAULT_ACCOUNT_ID"
         return {
             "error": {
                 "message": "Account ID is required",
-                "details": "Please specify an account_id parameter or configure default_account_id in meta-ads.yaml",
-                "example": "Use account_id='act_123456789' or account_id='123456789'"
+                "details": details,
+                "example": "Use account_id='act_123456789' or account_id='123456789'",
             }
         }
 
@@ -106,32 +115,55 @@ async def meta_get_account_info(
 
     # Check for errors
     if "error" in data:
-        if "access" in str(data.get("error", {})).lower() or "permission" in str(data.get("error", {})).lower():
+        if not ONLY_DEFAULT_ACCOUNT and (
+            "access" in str(data.get("error", {})).lower()
+            or "permission" in str(data.get("error", {})).lower()
+        ):
             # Get accessible accounts for helpful error message
             accessible = await make_api_request(
-                "me/adaccounts",
-                access_token,
-                {"fields": "id,name", "limit": 10}
+                "me/adaccounts", access_token, {"fields": "id,name", "limit": 10}
             )
             if "data" in accessible:
                 return {
                     "error": {
                         "message": f"Account {account_id} is not accessible",
-                        "accessible_accounts": [{"id": a["id"], "name": a["name"]} for a in accessible["data"][:10]],
-                        "suggestion": "Try using one of the accessible account IDs listed above"
+                        "accessible_accounts": [
+                            {"id": a["id"], "name": a["name"]}
+                            for a in accessible["data"][:10]
+                        ],
+                        "suggestion": "Try using one of the accessible account IDs listed above",
                     }
                 }
         return data
 
     # Add DSA requirement detection for European accounts
     if "business_country_code" in data:
-        european_countries = ["DE", "FR", "IT", "ES", "NL", "BE", "AT", "IE", "DK", "SE", "FI", "NO", "PL", "CZ"]
+        european_countries = [
+            "DE",
+            "FR",
+            "IT",
+            "ES",
+            "NL",
+            "BE",
+            "AT",
+            "IE",
+            "DK",
+            "SE",
+            "FI",
+            "NO",
+            "PL",
+            "CZ",
+        ]
         if data["business_country_code"] in european_countries:
             data["dsa_required"] = True
-            data["dsa_compliance_note"] = "This account is subject to European DSA requirements"
+            data["dsa_compliance_note"] = (
+                "This account is subject to European DSA requirements"
+            )
         else:
             data["dsa_required"] = False
-            data["dsa_compliance_note"] = "This account is not subject to European DSA requirements"
+            data["dsa_compliance_note"] = (
+                "This account is not subject to European DSA requirements"
+            )
 
     return data
 
@@ -143,7 +175,7 @@ async def meta_list_campaigns(
     access_token: Optional[str] = None,
     status: Optional[str] = None,
     limit: int = 25,
-    after: Optional[str] = None
+    after: Optional[str] = None,
 ) -> dict:
     """List campaigns for a Meta Ads account with optional filtering.
 
@@ -168,16 +200,20 @@ async def meta_list_campaigns(
         >>> for campaign in campaigns["data"]:
         ...     print(f"{campaign['name']}: {campaign['objective']}")
     """
-    account_id = account_id or get_default_account_id()
+    account_id = resolve_account_id(account_id)
     if not account_id:
-        return {"error": {"message": "account_id is required - configure default_account_id in meta-ads.yaml"}}
+        return {
+            "error": {
+                "message": "account_id is required - configure default_account_id in meta-ads.yaml or META_DEFAULT_ACCOUNT_ID"
+            }
+        }
 
     account_id = ensure_account_prefix(account_id)
 
     endpoint = f"{account_id}/campaigns"
     params = {
         "fields": "id,name,objective,status,daily_budget,lifetime_budget,buying_type,start_time,stop_time,created_time,updated_time,bid_strategy,effective_status,special_ad_categories",
-        "limit": limit
+        "limit": limit,
     }
 
     if status:
@@ -193,8 +229,7 @@ async def meta_list_campaigns(
 @mcp.tool()
 @meta_api_tool
 async def meta_get_campaign_details(
-    campaign_id: str,
-    access_token: Optional[str] = None
+    campaign_id: str, access_token: Optional[str] = None
 ) -> dict:
     """Get detailed information about a specific campaign.
 
@@ -246,7 +281,7 @@ async def meta_create_campaign(
     special_ad_categories: Optional[List[str]] = None,
     buying_type: Optional[str] = None,
     bid_strategy: Optional[str] = None,
-    spend_cap: Optional[int] = None
+    spend_cap: Optional[int] = None,
 ) -> dict:
     """Create a new campaign in a Meta Ads account.
 
@@ -292,9 +327,13 @@ async def meta_create_campaign(
         ... )
         >>> print(f"Created campaign: {result['id']}")
     """
-    account_id = account_id or get_default_account_id()
+    account_id = resolve_account_id(account_id)
     if not account_id:
-        return {"error": {"message": "account_id is required - configure default_account_id in meta-ads.yaml"}}
+        return {
+            "error": {
+                "message": "account_id is required - configure default_account_id in meta-ads.yaml or META_DEFAULT_ACCOUNT_ID"
+            }
+        }
     if not name:
         return {"error": {"message": "name is required"}}
     if not objective:
@@ -316,7 +355,7 @@ async def meta_create_campaign(
         "name": name,
         "objective": objective,
         "status": status,
-        "special_ad_categories": json.dumps(special_ad_categories)
+        "special_ad_categories": json.dumps(special_ad_categories),
     }
 
     if daily_budget is not None:
@@ -338,12 +377,7 @@ async def meta_create_campaign(
         data = await make_api_request(endpoint, access_token, params, method="POST")
         return data
     except Exception as e:
-        return {
-            "error": {
-                "message": "Failed to create campaign",
-                "details": str(e)
-            }
-        }
+        return {"error": {"message": "Failed to create campaign", "details": str(e)}}
 
 
 @mcp.tool()
@@ -356,7 +390,7 @@ async def meta_update_campaign(
     daily_budget: Optional[int] = None,
     lifetime_budget: Optional[int] = None,
     bid_strategy: Optional[str] = None,
-    spend_cap: Optional[int] = None
+    spend_cap: Optional[int] = None,
 ) -> dict:
     """Update an existing campaign's settings.
 
@@ -419,6 +453,6 @@ async def meta_update_campaign(
         return {
             "error": {
                 "message": f"Failed to update campaign {campaign_id}",
-                "details": str(e)
+                "details": str(e),
             }
         }

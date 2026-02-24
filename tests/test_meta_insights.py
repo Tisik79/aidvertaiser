@@ -53,14 +53,14 @@ class TestInsights:
             object_id=meta_account_id,
             access_token=meta_access_token,
             time_range="last_30d",
-            level="account"
+            level="account",
         )
 
         assert "error" not in result, f"Insights failed: {result}"
 
         if "data" in result and result["data"]:
             data = result["data"][0]
-            print(f"\nAccount Insights (Last 30 Days):")
+            print("\nAccount Insights (Last 30 Days):")
             print(f"  Impressions: {data.get('impressions', 'N/A')}")
             print(f"  Clicks: {data.get('clicks', 'N/A')}")
             print(f"  Spend: {data.get('spend', 'N/A')}")
@@ -73,9 +73,7 @@ class TestInsights:
         """Test getting campaign-level insights."""
         # First get a campaign
         campaigns = await meta_list_campaigns(
-            account_id=meta_account_id,
-            access_token=meta_access_token,
-            limit=1
+            account_id=meta_account_id, access_token=meta_access_token, limit=1
         )
 
         if not campaigns.get("data"):
@@ -87,7 +85,7 @@ class TestInsights:
             object_id=campaign_id,
             access_token=meta_access_token,
             time_range="last_7d",
-            level="campaign"
+            level="campaign",
         )
 
         assert "error" not in result, f"Insights failed: {result}"
@@ -95,39 +93,47 @@ class TestInsights:
         print(f"\nCampaign Insights for {campaign_id}:")
         if "data" in result and result["data"]:
             for row in result["data"][:3]:
-                print(f"  Spend: {row.get('spend', 'N/A')}, Clicks: {row.get('clicks', 'N/A')}")
+                print(
+                    f"  Spend: {row.get('spend', 'N/A')}, Clicks: {row.get('clicks', 'N/A')}"
+                )
 
     @pytest.mark.asyncio
-    async def test_get_insights_with_breakdown(self, meta_access_token, meta_account_id):
+    async def test_get_insights_with_breakdown(
+        self, meta_access_token, meta_account_id
+    ):
         """Test getting insights with age breakdown."""
         result = await meta_get_insights(
             object_id=meta_account_id,
             access_token=meta_access_token,
             time_range="last_30d",
             level="account",
-            breakdown="age"
+            breakdown="age",
         )
 
         assert "error" not in result, f"Insights failed: {result}"
 
-        print(f"\nAccount Insights by Age:")
+        print("\nAccount Insights by Age:")
         if "data" in result:
             for row in result["data"][:5]:
-                print(f"  Age {row.get('age', 'N/A')}: {row.get('impressions', 0)} impressions")
+                print(
+                    f"  Age {row.get('age', 'N/A')}: {row.get('impressions', 0)} impressions"
+                )
 
     @pytest.mark.asyncio
-    async def test_get_insights_custom_date_range(self, meta_access_token, meta_account_id):
+    async def test_get_insights_custom_date_range(
+        self, meta_access_token, meta_account_id
+    ):
         """Test getting insights with custom date range."""
         result = await meta_get_insights(
             object_id=meta_account_id,
             access_token=meta_access_token,
             time_range={"since": "2024-01-01", "until": "2024-12-31"},
-            level="account"
+            level="account",
         )
 
         assert "error" not in result, f"Insights failed: {result}"
 
-        print(f"\nAccount Insights (2024):")
+        print("\nAccount Insights (2024):")
         if "data" in result and result["data"]:
             data = result["data"][0]
             print(f"  Total Spend: {data.get('spend', 'N/A')}")
@@ -141,9 +147,7 @@ class TestInterestSearch:
     async def test_search_interests(self, meta_access_token):
         """Test searching for interests."""
         result = await meta_search_interests(
-            query="fitness",
-            access_token=meta_access_token,
-            limit=10
+            query="fitness", access_token=meta_access_token, limit=10
         )
 
         assert "error" not in result, f"Search failed: {result}"
@@ -158,9 +162,7 @@ class TestInterestSearch:
     async def test_search_interests_food(self, meta_access_token):
         """Test searching for food-related interests."""
         result = await meta_search_interests(
-            query="cooking",
-            access_token=meta_access_token,
-            limit=10
+            query="cooking", access_token=meta_access_token, limit=10
         )
 
         assert "error" not in result
@@ -177,14 +179,14 @@ class TestInterestSearch:
         result = await meta_get_interest_suggestions(
             interest_list=["Running", "Marathon", "Fitness"],
             access_token=meta_access_token,
-            limit=10
+            limit=10,
         )
 
         assert "error" not in result, f"Suggestions failed: {result}"
 
         if "data" in result:
             suggestions = result["data"]
-            print(f"\nSuggested interests based on Running/Marathon/Fitness:")
+            print("\nSuggested interests based on Running/Marathon/Fitness:")
             for suggestion in suggestions[:5]:
                 print(f"  - {suggestion.get('name')}")
 
@@ -196,9 +198,7 @@ class TestGeoSearch:
     async def test_search_countries(self, meta_access_token):
         """Test searching for countries."""
         result = await meta_search_geo_locations(
-            query="Czech",
-            access_token=meta_access_token,
-            location_types=["country"]
+            query="Czech", access_token=meta_access_token, location_types=["country"]
         )
 
         assert "error" not in result, f"Search failed: {result}"
@@ -213,9 +213,7 @@ class TestGeoSearch:
     async def test_search_cities(self, meta_access_token):
         """Test searching for cities."""
         result = await meta_search_geo_locations(
-            query="Prague",
-            access_token=meta_access_token,
-            location_types=["city"]
+            query="Prague", access_token=meta_access_token, location_types=["city"]
         )
 
         assert "error" not in result
@@ -230,8 +228,7 @@ class TestGeoSearch:
     async def test_search_all_location_types(self, meta_access_token):
         """Test searching without location type filter."""
         result = await meta_search_geo_locations(
-            query="New York",
-            access_token=meta_access_token
+            query="New York", access_token=meta_access_token
         )
 
         assert "error" not in result
@@ -249,10 +246,7 @@ class TestBehaviorSearch:
     @pytest.mark.asyncio
     async def test_search_behaviors(self, meta_access_token):
         """Test getting available behaviors."""
-        result = await meta_search_behaviors(
-            access_token=meta_access_token,
-            limit=20
-        )
+        result = await meta_search_behaviors(access_token=meta_access_token, limit=20)
 
         assert "error" not in result, f"Search failed: {result}"
         assert "data" in result
@@ -273,15 +267,15 @@ class TestAudienceEstimation:
             targeting={
                 "age_min": 25,
                 "age_max": 55,
-                "geo_locations": {"countries": ["CZ"]}
+                "geo_locations": {"countries": ["CZ"]},
             },
             account_id=meta_account_id,
-            access_token=meta_access_token
+            access_token=meta_access_token,
         )
 
         assert "error" not in result, f"Estimation failed: {result}"
 
-        print(f"\nAudience Estimate (CZ, 25-55):")
+        print("\nAudience Estimate (CZ, 25-55):")
         print(f"  Estimated Size: {result.get('estimated_audience_size', 'N/A'):,}")
         if "estimate_details" in result:
             details = result["estimate_details"]
@@ -289,13 +283,13 @@ class TestAudienceEstimation:
             print(f"  Upper Bound: {details.get('users_upper_bound', 'N/A'):,}")
 
     @pytest.mark.asyncio
-    async def test_estimate_audience_with_interests(self, meta_access_token, meta_account_id):
+    async def test_estimate_audience_with_interests(
+        self, meta_access_token, meta_account_id
+    ):
         """Test audience estimation with interest targeting."""
         # First find a fitness interest
         interests = await meta_search_interests(
-            query="fitness",
-            access_token=meta_access_token,
-            limit=1
+            query="fitness", access_token=meta_access_token, limit=1
         )
 
         if not interests.get("data"):
@@ -310,10 +304,10 @@ class TestAudienceEstimation:
                 "geo_locations": {"countries": ["CZ"]},
                 "flexible_spec": [
                     {"interests": [{"id": interest["id"], "name": interest["name"]}]}
-                ]
+                ],
             },
             account_id=meta_account_id,
-            access_token=meta_access_token
+            access_token=meta_access_token,
         )
 
         assert "error" not in result, f"Estimation failed: {result}"
@@ -322,16 +316,18 @@ class TestAudienceEstimation:
         print(f"  Estimated Size: {result.get('estimated_audience_size', 'N/A'):,}")
 
     @pytest.mark.asyncio
-    async def test_estimate_audience_missing_location(self, meta_access_token, meta_account_id):
+    async def test_estimate_audience_missing_location(
+        self, meta_access_token, meta_account_id
+    ):
         """Test that missing location returns error."""
         result = await meta_estimate_audience_size(
             targeting={
                 "age_min": 25,
-                "age_max": 55
+                "age_max": 55,
                 # Missing geo_locations
             },
             account_id=meta_account_id,
-            access_token=meta_access_token
+            access_token=meta_access_token,
         )
 
         assert "error" in result

@@ -15,9 +15,8 @@ from mcp.server.fastmcp.exceptions import ToolError
 from ..server import mcp
 from .client import (
     get_google_ads_client,
-    clean_customer_id,
     format_error,
-    get_default_customer_id,
+    resolve_customer_id,
     get_enum_name,
     get_enum_value,
 )
@@ -57,7 +56,7 @@ def google_list_assets(
     """
     try:
         client = get_google_ads_client(login_customer_id=login_customer_id)
-        customer_id = clean_customer_id(customer_id or get_default_customer_id() or "")
+        customer_id = resolve_customer_id(customer_id)
         if not customer_id:
             raise ToolError("No customer_id provided and no default configured")
 
@@ -100,7 +99,9 @@ def google_list_assets(
                 asset_data["image_url"] = asset.image_asset.full_size.url
                 asset_data["file_size"] = asset.image_asset.file_size
             if asset.youtube_video_asset.youtube_video_id:
-                asset_data["youtube_video_id"] = asset.youtube_video_asset.youtube_video_id
+                asset_data["youtube_video_id"] = (
+                    asset.youtube_video_asset.youtube_video_id
+                )
 
             assets.append(asset_data)
 
@@ -140,7 +141,7 @@ def google_create_text_asset(
     """
     try:
         client = get_google_ads_client(login_customer_id=login_customer_id)
-        customer_id = clean_customer_id(customer_id or get_default_customer_id() or "")
+        customer_id = resolve_customer_id(customer_id)
         if not customer_id:
             raise ToolError("No customer_id provided and no default configured")
 
@@ -180,10 +181,13 @@ def google_create_image_asset(
     name: Optional[str] = None,
     login_customer_id: Optional[str] = None,
 ) -> dict[str, Any]:
-    """Creates an image asset from base64 encoded data.
+    """Creates an image asset from base64 data or a file path.
 
     Args:
-        image_data: Base64 encoded image data (PNG, JPG, or GIF).
+        image_data: Can be one of:
+            - File path to an image file (PNG, JPG, GIF) - e.g., "/tmp/image.jpg"
+            - File path to a text file containing base64 data - e.g., "/tmp/image-b64.txt"
+            - Direct base64 encoded image data string
         customer_id: The Google Ads customer ID.
             Uses default from config if not provided.
         name: Optional name for the asset.
@@ -201,17 +205,38 @@ def google_create_image_asset(
     """
     try:
         client = get_google_ads_client(login_customer_id=login_customer_id)
-        customer_id = clean_customer_id(customer_id or get_default_customer_id() or "")
+        customer_id = resolve_customer_id(customer_id)
         if not customer_id:
             raise ToolError("No customer_id provided and no default configured")
 
         asset_service = client.get_service("AssetService")
 
-        # Decode base64 image data
-        try:
-            image_bytes = base64.b64decode(image_data)
-        except Exception as e:
-            raise ToolError(f"Invalid base64 image data: {e}")
+        # Handle different input types
+        image_bytes = None
+
+        # Check if it's a file path
+        if image_data.startswith("/") and os.path.isfile(image_data):
+            file_path = image_data
+            # Check if it's an image file or a base64 text file
+            lower_path = file_path.lower()
+            if lower_path.endswith((".png", ".jpg", ".jpeg", ".gif", ".webp")):
+                # Read binary image file directly
+                with open(file_path, "rb") as f:
+                    image_bytes = f.read()
+            else:
+                # Assume it's a text file containing base64 data
+                with open(file_path, "r") as f:
+                    b64_data = f.read().strip()
+                try:
+                    image_bytes = base64.b64decode(b64_data)
+                except Exception as e:
+                    raise ToolError(f"Invalid base64 data in file {file_path}: {e}")
+        else:
+            # Treat as direct base64 data
+            try:
+                image_bytes = base64.b64decode(image_data)
+            except Exception as e:
+                raise ToolError(f"Invalid base64 image data: {e}")
 
         # Create the image asset
         asset_operation = client.get_type("AssetOperation")
@@ -281,14 +306,14 @@ def google_create_text_assets_batch(
 
         for i, h in enumerate(headlines):
             if len(h) > 30:
-                raise ToolError(f"Headline {i+1} exceeds 30 characters: '{h}'")
+                raise ToolError(f"Headline {i + 1} exceeds 30 characters: '{h}'")
 
         for i, d in enumerate(descriptions):
             if len(d) > 90:
-                raise ToolError(f"Description {i+1} exceeds 90 characters")
+                raise ToolError(f"Description {i + 1} exceeds 90 characters")
 
         client = get_google_ads_client(login_customer_id=login_customer_id)
-        customer_id = clean_customer_id(customer_id or get_default_customer_id() or "")
+        customer_id = resolve_customer_id(customer_id)
         if not customer_id:
             raise ToolError("No customer_id provided and no default configured")
 
@@ -317,9 +342,7 @@ def google_create_text_assets_batch(
 
         # Split results into headlines and descriptions
         headline_count = len(headlines)
-        headline_assets = [
-            r.resource_name for r in response.results[:headline_count]
-        ]
+        headline_assets = [r.resource_name for r in response.results[:headline_count]]
         description_assets = [
             r.resource_name for r in response.results[headline_count:]
         ]
@@ -374,7 +397,7 @@ def google_link_asset_to_campaign(
     """
     try:
         client = get_google_ads_client(login_customer_id=login_customer_id)
-        customer_id = clean_customer_id(customer_id or get_default_customer_id() or "")
+        customer_id = resolve_customer_id(customer_id)
         if not customer_id:
             raise ToolError("No customer_id provided and no default configured")
 

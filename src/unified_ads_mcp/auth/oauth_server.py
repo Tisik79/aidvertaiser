@@ -69,7 +69,9 @@ class OAuthCallbackHandler(BaseHTTPRequestHandler):
                     self._send_json({"status": "success"})
                     print("[OAuth] Meta token received", file=sys.stderr)
                 else:
-                    self._send_json({"status": "error", "message": "No token in request"})
+                    self._send_json(
+                        {"status": "error", "message": "No token in request"}
+                    )
             except json.JSONDecodeError as e:
                 self._send_json({"status": "error", "message": f"Invalid JSON: {e}"})
             except Exception as e:
@@ -87,19 +89,18 @@ class OAuthCallbackHandler(BaseHTTPRequestHandler):
             print("[OAuth] Google authorization code received", file=sys.stderr)
             self._send_success_page(
                 "Google Ads Authentication Successful",
-                "Your Google Ads account has been connected. You can close this window."
+                "Your Google Ads account has been connected. You can close this window.",
             )
         elif "error" in params:
             error = params.get("error", ["Unknown error"])[0]
             error_desc = params.get("error_description", [""])[0]
             self._send_error_page(
-                "Google Ads Authentication Failed",
-                f"Error: {error}. {error_desc}"
+                "Google Ads Authentication Failed", f"Error: {error}. {error_desc}"
             )
         else:
             self._send_error_page(
                 "Google Ads Authentication Failed",
-                "No authorization code received in the callback."
+                "No authorization code received in the callback.",
             )
 
     def _handle_meta_callback(self, parsed) -> None:
@@ -356,9 +357,7 @@ def start_oauth_server(port: int = 8888) -> int:
 
     # Start server in background thread
     _server_thread = threading.Thread(
-        target=_server.serve_forever,
-        daemon=True,
-        name="OAuthCallbackServer"
+        target=_server.serve_forever, daemon=True, name="OAuthCallbackServer"
     )
     _server_thread.start()
 

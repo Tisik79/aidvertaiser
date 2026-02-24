@@ -4,9 +4,7 @@ These tests verify that the token-based authentication works correctly,
 including token validation, refresh, and config loading.
 """
 
-import os
 import time
-import pytest
 import requests
 
 from unified_ads_mcp.auth.meta_auth import (
@@ -14,7 +12,6 @@ from unified_ads_mcp.auth.meta_auth import (
     get_meta_auth,
     reset_meta_auth,
     META_GRAPH_URL,
-    META_TOKEN_URL,
 )
 
 
@@ -73,9 +70,9 @@ class TestTokenDebug:
             f"{META_GRAPH_URL}/debug_token",
             params={
                 "input_token": meta_access_token,
-                "access_token": f"{meta_app_id}|{meta_app_secret}"
+                "access_token": f"{meta_app_id}|{meta_app_secret}",
             },
-            timeout=10
+            timeout=10,
         )
 
         assert response.status_code == 200
@@ -100,9 +97,9 @@ class TestTokenDebug:
             f"{META_GRAPH_URL}/debug_token",
             params={
                 "input_token": meta_access_token,
-                "access_token": f"{meta_app_id}|{meta_app_secret}"
+                "access_token": f"{meta_app_id}|{meta_app_secret}",
             },
-            timeout=10
+            timeout=10,
         )
 
         data = response.json()
@@ -125,7 +122,7 @@ class TestGraphAPIAccess:
         response = requests.get(
             f"{META_GRAPH_URL}/me",
             params={"access_token": meta_access_token},
-            timeout=10
+            timeout=10,
         )
 
         assert response.status_code == 200
@@ -140,9 +137,9 @@ class TestGraphAPIAccess:
             f"{META_GRAPH_URL}/me/adaccounts",
             params={
                 "access_token": meta_access_token,
-                "fields": "id,name,account_status"
+                "fields": "id,name,account_status",
             },
-            timeout=10
+            timeout=10,
         )
 
         assert response.status_code == 200

@@ -6,10 +6,8 @@ campaign hierarchy including creatives and ads.
 
 import asyncio
 import base64
-import os
 import pytest
 import time
-from pathlib import Path
 
 
 # Import the Meta Ads functions and access underlying async functions via .fn
@@ -73,13 +71,15 @@ class TestImageUpload:
     """Test image upload functionality."""
 
     @pytest.mark.asyncio
-    async def test_upload_from_file_path(self, meta_access_token, meta_account_id, test_image_path, test_entities):
+    async def test_upload_from_file_path(
+        self, meta_access_token, meta_account_id, test_image_path, test_entities
+    ):
         """Test uploading image from local file path."""
         result = await meta_upload_image(
             account_id=meta_account_id,
             access_token=meta_access_token,
             file_path=test_image_path,
-            name=f"test_upload_{int(time.time())}.jpg"
+            name=f"test_upload_{int(time.time())}.jpg",
         )
 
         assert "error" not in result, f"Upload failed: {result}"
@@ -94,7 +94,9 @@ class TestImageUpload:
         print(f"  Account: {result.get('account_id')}")
 
     @pytest.mark.asyncio
-    async def test_upload_from_base64(self, meta_access_token, meta_account_id, test_image_path, test_entities):
+    async def test_upload_from_base64(
+        self, meta_access_token, meta_account_id, test_image_path, test_entities
+    ):
         """Test uploading image from base64 data."""
         # Read and encode image
         with open(test_image_path, "rb") as f:
@@ -105,7 +107,7 @@ class TestImageUpload:
             account_id=meta_account_id,
             access_token=meta_access_token,
             file=base64_data,
-            name=f"test_base64_{int(time.time())}.jpg"
+            name=f"test_base64_{int(time.time())}.jpg",
         )
 
         assert "error" not in result, f"Upload failed: {result}"
@@ -114,11 +116,13 @@ class TestImageUpload:
         image_hash = result["image_hash"]
         test_entities["images"].append(image_hash)
 
-        print(f"\nUploaded image from base64")
+        print("\nUploaded image from base64")
         print(f"  Hash: {image_hash}")
 
     @pytest.mark.asyncio
-    async def test_upload_from_data_url(self, meta_access_token, meta_account_id, test_image_path, test_entities):
+    async def test_upload_from_data_url(
+        self, meta_access_token, meta_account_id, test_image_path, test_entities
+    ):
         """Test uploading image from data URL."""
         # Read and encode as data URL
         with open(test_image_path, "rb") as f:
@@ -130,7 +134,7 @@ class TestImageUpload:
             account_id=meta_account_id,
             access_token=meta_access_token,
             file=data_url,
-            name=f"test_dataurl_{int(time.time())}.jpg"
+            name=f"test_dataurl_{int(time.time())}.jpg",
         )
 
         assert "error" not in result, f"Upload failed: {result}"
@@ -139,7 +143,7 @@ class TestImageUpload:
         image_hash = result["image_hash"]
         test_entities["images"].append(image_hash)
 
-        print(f"\nUploaded image from data URL")
+        print("\nUploaded image from data URL")
         print(f"  Hash: {image_hash}")
 
     @pytest.mark.asyncio
@@ -148,7 +152,7 @@ class TestImageUpload:
         result = await meta_upload_image(
             account_id=meta_account_id,
             access_token=meta_access_token,
-            file_path="/nonexistent/path/to/image.jpg"
+            file_path="/nonexistent/path/to/image.jpg",
         )
 
         assert "error" in result
@@ -188,7 +192,7 @@ class TestCreativeCreation:
             access_token=meta_access_token,
             headline="Test Headline",
             description="Test description for the ad creative",
-            call_to_action_type="LEARN_MORE"
+            call_to_action_type="LEARN_MORE",
         )
 
         assert "error" not in result, f"Creative creation failed: {result}"
@@ -215,7 +219,12 @@ class TestFullCampaignHierarchy:
 
     @pytest.mark.asyncio
     async def test_create_full_hierarchy(
-        self, meta_access_token, meta_account_id, test_image_path, page_id, test_entities
+        self,
+        meta_access_token,
+        meta_account_id,
+        test_image_path,
+        page_id,
+        test_entities,
     ):
         """Test creating a complete campaign hierarchy."""
         timestamp = int(time.time())
@@ -228,10 +237,12 @@ class TestFullCampaignHierarchy:
             account_id=meta_account_id,
             access_token=meta_access_token,
             status="PAUSED",
-            daily_budget=1000
+            daily_budget=1000,
         )
 
-        assert "error" not in campaign_result, f"Campaign creation failed: {campaign_result}"
+        assert "error" not in campaign_result, (
+            f"Campaign creation failed: {campaign_result}"
+        )
         campaign_id = campaign_result["id"]
         test_entities["campaigns"].append(campaign_id)
         print(f"  Campaign ID: {campaign_id}")
@@ -247,11 +258,11 @@ class TestFullCampaignHierarchy:
                 "age_min": 18,
                 "age_max": 65,
                 "geo_locations": {"countries": ["CZ"]},
-                "targeting_automation": {"advantage_audience": 1}
+                "targeting_automation": {"advantage_audience": 1},
             },
             account_id=meta_account_id,
             access_token=meta_access_token,
-            status="PAUSED"
+            status="PAUSED",
         )
 
         assert "error" not in adset_result, f"Ad set creation failed: {adset_result}"
@@ -265,7 +276,7 @@ class TestFullCampaignHierarchy:
             account_id=meta_account_id,
             access_token=meta_access_token,
             file_path=test_image_path,
-            name=f"hierarchy_test_{timestamp}.jpg"
+            name=f"hierarchy_test_{timestamp}.jpg",
         )
 
         assert "error" not in image_result, f"Image upload failed: {image_result}"
@@ -284,10 +295,12 @@ class TestFullCampaignHierarchy:
             account_id=meta_account_id,
             access_token=meta_access_token,
             headline="Hierarchy Test",
-            call_to_action_type="LEARN_MORE"
+            call_to_action_type="LEARN_MORE",
         )
 
-        assert "error" not in creative_result, f"Creative creation failed: {creative_result}"
+        assert "error" not in creative_result, (
+            f"Creative creation failed: {creative_result}"
+        )
         creative_id = creative_result["creative_id"]
         test_entities["creatives"].append(creative_id)
         print(f"  Creative ID: {creative_id}")
@@ -300,7 +313,7 @@ class TestFullCampaignHierarchy:
             creative_id=creative_id,
             account_id=meta_account_id,
             access_token=meta_access_token,
-            status="PAUSED"
+            status="PAUSED",
         )
 
         assert "error" not in ad_result, f"Ad creation failed: {ad_result}"
@@ -311,8 +324,7 @@ class TestFullCampaignHierarchy:
         # 6. Verify Ad Details
         print("\n=== Verifying Ad ===")
         ad_details = await meta_get_ad_details(
-            ad_id=ad_id,
-            access_token=meta_access_token
+            ad_id=ad_id, access_token=meta_access_token
         )
 
         assert "error" not in ad_details
@@ -337,13 +349,13 @@ class TestCreativeCleanup:
             result = await meta_update_campaign(
                 campaign_id=campaign_id,
                 access_token=meta_access_token,
-                status="DELETED"
+                status="DELETED",
             )
 
             if "error" not in result:
                 print(f"\nDeleted campaign: {campaign_id}")
 
-        print(f"\nTest entities summary:")
+        print("\nTest entities summary:")
         print(f"  Campaigns: {len(test_entities.get('campaigns', []))}")
         print(f"  Ad Sets: {len(test_entities.get('adsets', []))}")
         print(f"  Creatives: {len(test_entities.get('creatives', []))}")

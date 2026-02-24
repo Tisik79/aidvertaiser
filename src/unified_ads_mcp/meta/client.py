@@ -24,6 +24,7 @@ from facebook_business.adobjects.user import User
 from facebook_business.exceptions import FacebookRequestError
 
 from unified_ads_mcp.auth.meta_auth import get_meta_auth, MetaAdsAuth
+from ..config import only_default_account_enabled
 
 
 # Constants
@@ -36,11 +37,15 @@ DEFAULT_CREDENTIALS_PATH = os.path.expanduser("~/meta-ads.yaml")
 def get_default_account_id() -> Optional[str]:
     """Get the default Meta Ads account ID from config file.
 
-    Reads from META_ADS_CREDENTIALS env var or ~/meta-ads.yaml.
+    Reads from META_DEFAULT_ACCOUNT_ID env var or META_ADS_CREDENTIALS/~/meta-ads.yaml.
 
     Returns:
         The default account ID (with act_ prefix) or None if not configured.
     """
+    env_default = os.environ.get("META_DEFAULT_ACCOUNT_ID")
+    if env_default:
+        return ensure_account_prefix(str(env_default))
+
     credentials_path = os.environ.get("META_ADS_CREDENTIALS", DEFAULT_CREDENTIALS_PATH)
 
     if not os.path.isfile(credentials_path):
@@ -60,6 +65,14 @@ def get_default_account_id() -> Optional[str]:
         return None
     except Exception:
         return None
+
+
+def resolve_account_id(account_id: Optional[str]) -> Optional[str]:
+    """Resolve the account ID, enforcing ONLY_DEFAULT_ACCOUNT when enabled."""
+    default_id = get_default_account_id()
+    if only_default_account_enabled():
+        return default_id
+    return account_id or default_id
 
 
 class MetaAdsClientFactory:
@@ -375,7 +388,7 @@ async def make_api_request(
     endpoint: str,
     access_token: Optional[str] = None,
     params: Optional[Dict[str, Any]] = None,
-    method: str = "GET"
+    method: str = "GET",
 ) -> Dict[str, Any]:
     """Make a direct request to the Meta Graph API.
 
@@ -414,17 +427,23 @@ async def make_api_request(
                         encoded_params[key] = json.dumps(value)
                     else:
                         encoded_params[key] = value
-                response = await client.get(url, params=encoded_params, headers=headers, timeout=30.0)
+                response = await client.get(
+                    url, params=encoded_params, headers=headers, timeout=30.0
+                )
 
             elif method == "POST":
                 # Convert lists and dicts to JSON strings for POST
                 for key, value in list(request_params.items()):
                     if isinstance(value, (list, dict)):
                         request_params[key] = json.dumps(value)
-                response = await client.post(url, data=request_params, headers=headers, timeout=30.0)
+                response = await client.post(
+                    url, data=request_params, headers=headers, timeout=30.0
+                )
 
             elif method == "DELETE":
-                response = await client.delete(url, params=request_params, headers=headers, timeout=30.0)
+                response = await client.delete(
+                    url, params=request_params, headers=headers, timeout=30.0
+                )
 
             else:
                 raise ValueError(f"Unsupported HTTP method: {method}")
@@ -436,7 +455,7 @@ async def make_api_request(
             except json.JSONDecodeError:
                 return {
                     "text_response": response.text,
-                    "status_code": response.status_code
+                    "status_code": response.status_code,
                 }
 
         except httpx.HTTPStatusError as e:
@@ -444,12 +463,15 @@ async def make_api_request(
             try:
                 error_info = e.response.json()
             except Exception:
-                error_info = {"status_code": e.response.status_code, "text": e.response.text}
+                error_info = {
+                    "status_code": e.response.status_code,
+                    "text": e.response.text,
+                }
 
             return {
                 "error": {
                     "message": f"HTTP Error: {e.response.status_code}",
-                    "details": error_info
+                    "details": error_info,
                 }
             }
 
@@ -466,13 +488,14 @@ def meta_api_tool(func: Callable) -> Callable:
     Returns:
         Wrapped function with authentication and error handling.
     """
+
     @functools.wraps(func)
     async def wrapper(*args, **kwargs):
         try:
             # If access_token is not in kwargs or empty, get from auth
-            if 'access_token' not in kwargs or not kwargs['access_token']:
+            if "access_token" not in kwargs or not kwargs["access_token"]:
                 auth = get_meta_auth()
-                kwargs['access_token'] = auth.get_access_token()
+                kwargs["access_token"] = auth.get_access_token()
 
             # Call the original function
             result = await func(*args, **kwargs)
@@ -491,7 +514,7 @@ def meta_api_tool(func: Callable) -> Callable:
                 "error": {
                     "message": e.api_error_message(),
                     "code": error_code,
-                    "type": e.api_error_type()
+                    "type": e.api_error_type(),
                 }
             }
 

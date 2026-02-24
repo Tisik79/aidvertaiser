@@ -9,10 +9,17 @@ from typing import Any, Optional
 from google.ads.googleads.errors import GoogleAdsException
 from google.ads.googleads.util import get_nested_attr
 from mcp.server.fastmcp.exceptions import ToolError
-import proto
 
 from ..server import mcp
-from .client import get_google_ads_client, clean_customer_id, format_error, format_value, get_default_customer_id, get_enum_name, micros_to_currency, get_customer_currency
+from .client import (
+    get_google_ads_client,
+    format_error,
+    format_value,
+    resolve_customer_id,
+    get_enum_name,
+    micros_to_currency,
+    get_customer_currency,
+)
 
 
 def _preprocess_gaql(query: str) -> str:
@@ -81,7 +88,7 @@ def google_run_query(
     """
     try:
         client = get_google_ads_client(login_customer_id=login_customer_id)
-        customer_id = clean_customer_id(customer_id or get_default_customer_id() or "")
+        customer_id = resolve_customer_id(customer_id)
         if not customer_id:
             raise ToolError("No customer_id provided and no default configured")
 
@@ -159,7 +166,7 @@ def google_get_campaign_performance(
     """
     try:
         client = get_google_ads_client(login_customer_id=login_customer_id)
-        customer_id = clean_customer_id(customer_id or get_default_customer_id() or "")
+        customer_id = resolve_customer_id(customer_id)
         if not customer_id:
             raise ToolError("No customer_id provided and no default configured")
 
@@ -204,21 +211,31 @@ def google_get_campaign_performance(
         results = []
         for batch in response:
             for row in batch.results:
-                results.append({
-                    "campaign_id": str(row.campaign.id),
-                    "campaign_name": row.campaign.name,
-                    "status": get_enum_name(client, "CampaignStatusEnum", row.campaign.status),
-                    "channel_type": get_enum_name(client, "AdvertisingChannelTypeEnum", row.campaign.advertising_channel_type),
-                    "impressions": row.metrics.impressions,
-                    "clicks": row.metrics.clicks,
-                    "cost": micros_to_currency(row.metrics.cost_micros),
-                    "conversions": row.metrics.conversions,
-                    "conversion_value": row.metrics.conversions_value,
-                    "ctr": row.metrics.ctr,
-                    "average_cpc": micros_to_currency(row.metrics.average_cpc),
-                    "cost_per_conversion": micros_to_currency(row.metrics.cost_per_conversion),
-                    "currency": currency_code,
-                })
+                results.append(
+                    {
+                        "campaign_id": str(row.campaign.id),
+                        "campaign_name": row.campaign.name,
+                        "status": get_enum_name(
+                            client, "CampaignStatusEnum", row.campaign.status
+                        ),
+                        "channel_type": get_enum_name(
+                            client,
+                            "AdvertisingChannelTypeEnum",
+                            row.campaign.advertising_channel_type,
+                        ),
+                        "impressions": row.metrics.impressions,
+                        "clicks": row.metrics.clicks,
+                        "cost": micros_to_currency(row.metrics.cost_micros),
+                        "conversions": row.metrics.conversions,
+                        "conversion_value": row.metrics.conversions_value,
+                        "ctr": row.metrics.ctr,
+                        "average_cpc": micros_to_currency(row.metrics.average_cpc),
+                        "cost_per_conversion": micros_to_currency(
+                            row.metrics.cost_per_conversion
+                        ),
+                        "currency": currency_code,
+                    }
+                )
 
         return results
 
@@ -264,7 +281,7 @@ def google_get_keyword_performance(
     """
     try:
         client = get_google_ads_client(login_customer_id=login_customer_id)
-        customer_id = clean_customer_id(customer_id or get_default_customer_id() or "")
+        customer_id = resolve_customer_id(customer_id)
         if not customer_id:
             raise ToolError("No customer_id provided and no default configured")
 
@@ -308,23 +325,34 @@ def google_get_keyword_performance(
         results = []
         for batch in response:
             for row in batch.results:
-                results.append({
-                    "keyword_id": str(row.ad_group_criterion.criterion_id),
-                    "keyword_text": row.ad_group_criterion.keyword.text,
-                    "match_type": get_enum_name(client, "KeywordMatchTypeEnum", row.ad_group_criterion.keyword.match_type),
-                    "status": get_enum_name(client, "AdGroupCriterionStatusEnum", row.ad_group_criterion.status),
-                    "quality_score": row.ad_group_criterion.quality_info.quality_score or None,
-                    "campaign_id": str(row.campaign.id),
-                    "campaign_name": row.campaign.name,
-                    "ad_group_id": str(row.ad_group.id),
-                    "ad_group_name": row.ad_group.name,
-                    "impressions": row.metrics.impressions,
-                    "clicks": row.metrics.clicks,
-                    "cost": micros_to_currency(row.metrics.cost_micros),
-                    "conversions": row.metrics.conversions,
-                    "ctr": row.metrics.ctr,
-                    "average_cpc": micros_to_currency(row.metrics.average_cpc),
-                })
+                results.append(
+                    {
+                        "keyword_id": str(row.ad_group_criterion.criterion_id),
+                        "keyword_text": row.ad_group_criterion.keyword.text,
+                        "match_type": get_enum_name(
+                            client,
+                            "KeywordMatchTypeEnum",
+                            row.ad_group_criterion.keyword.match_type,
+                        ),
+                        "status": get_enum_name(
+                            client,
+                            "AdGroupCriterionStatusEnum",
+                            row.ad_group_criterion.status,
+                        ),
+                        "quality_score": row.ad_group_criterion.quality_info.quality_score
+                        or None,
+                        "campaign_id": str(row.campaign.id),
+                        "campaign_name": row.campaign.name,
+                        "ad_group_id": str(row.ad_group.id),
+                        "ad_group_name": row.ad_group.name,
+                        "impressions": row.metrics.impressions,
+                        "clicks": row.metrics.clicks,
+                        "cost": micros_to_currency(row.metrics.cost_micros),
+                        "conversions": row.metrics.conversions,
+                        "ctr": row.metrics.ctr,
+                        "average_cpc": micros_to_currency(row.metrics.average_cpc),
+                    }
+                )
 
         return results
 
@@ -366,7 +394,7 @@ def google_get_ad_performance(
     """
     try:
         client = get_google_ads_client(login_customer_id=login_customer_id)
-        customer_id = clean_customer_id(customer_id or get_default_customer_id() or "")
+        customer_id = resolve_customer_id(customer_id)
         if not customer_id:
             raise ToolError("No customer_id provided and no default configured")
 
@@ -406,21 +434,27 @@ def google_get_ad_performance(
         results = []
         for batch in response:
             for row in batch.results:
-                results.append({
-                    "ad_id": str(row.ad_group_ad.ad.id),
-                    "ad_type": get_enum_name(client, "AdTypeEnum", row.ad_group_ad.ad.type_),
-                    "status": get_enum_name(client, "AdGroupAdStatusEnum", row.ad_group_ad.status),
-                    "campaign_id": str(row.campaign.id),
-                    "campaign_name": row.campaign.name,
-                    "ad_group_id": str(row.ad_group.id),
-                    "ad_group_name": row.ad_group.name,
-                    "impressions": row.metrics.impressions,
-                    "clicks": row.metrics.clicks,
-                    "cost": micros_to_currency(row.metrics.cost_micros),
-                    "conversions": row.metrics.conversions,
-                    "ctr": row.metrics.ctr,
-                    "average_cpc": micros_to_currency(row.metrics.average_cpc),
-                })
+                results.append(
+                    {
+                        "ad_id": str(row.ad_group_ad.ad.id),
+                        "ad_type": get_enum_name(
+                            client, "AdTypeEnum", row.ad_group_ad.ad.type_
+                        ),
+                        "status": get_enum_name(
+                            client, "AdGroupAdStatusEnum", row.ad_group_ad.status
+                        ),
+                        "campaign_id": str(row.campaign.id),
+                        "campaign_name": row.campaign.name,
+                        "ad_group_id": str(row.ad_group.id),
+                        "ad_group_name": row.ad_group.name,
+                        "impressions": row.metrics.impressions,
+                        "clicks": row.metrics.clicks,
+                        "cost": micros_to_currency(row.metrics.cost_micros),
+                        "conversions": row.metrics.conversions,
+                        "ctr": row.metrics.ctr,
+                        "average_cpc": micros_to_currency(row.metrics.average_cpc),
+                    }
+                )
 
         return results
 
@@ -465,7 +499,7 @@ def google_get_search_terms_report(
     """
     try:
         client = get_google_ads_client(login_customer_id=login_customer_id)
-        customer_id = clean_customer_id(customer_id or get_default_customer_id() or "")
+        customer_id = resolve_customer_id(customer_id)
         if not customer_id:
             raise ToolError("No customer_id provided and no default configured")
 
@@ -505,20 +539,26 @@ def google_get_search_terms_report(
         results = []
         for batch in response:
             for row in batch.results:
-                results.append({
-                    "search_term": row.search_term_view.search_term,
-                    "keyword_text": row.ad_group_criterion.keyword.text,
-                    "match_type": get_enum_name(client, "KeywordMatchTypeEnum", row.ad_group_criterion.keyword.match_type),
-                    "campaign_id": str(row.campaign.id),
-                    "campaign_name": row.campaign.name,
-                    "ad_group_id": str(row.ad_group.id),
-                    "ad_group_name": row.ad_group.name,
-                    "impressions": row.metrics.impressions,
-                    "clicks": row.metrics.clicks,
-                    "cost": micros_to_currency(row.metrics.cost_micros),
-                    "conversions": row.metrics.conversions,
-                    "ctr": row.metrics.ctr,
-                })
+                results.append(
+                    {
+                        "search_term": row.search_term_view.search_term,
+                        "keyword_text": row.ad_group_criterion.keyword.text,
+                        "match_type": get_enum_name(
+                            client,
+                            "KeywordMatchTypeEnum",
+                            row.ad_group_criterion.keyword.match_type,
+                        ),
+                        "campaign_id": str(row.campaign.id),
+                        "campaign_name": row.campaign.name,
+                        "ad_group_id": str(row.ad_group.id),
+                        "ad_group_name": row.ad_group.name,
+                        "impressions": row.metrics.impressions,
+                        "clicks": row.metrics.clicks,
+                        "cost": micros_to_currency(row.metrics.cost_micros),
+                        "conversions": row.metrics.conversions,
+                        "ctr": row.metrics.ctr,
+                    }
+                )
 
         return results
 
@@ -562,7 +602,7 @@ def google_get_account_summary(
     """
     try:
         client = get_google_ads_client(login_customer_id=login_customer_id)
-        customer_id = clean_customer_id(customer_id or get_default_customer_id() or "")
+        customer_id = resolve_customer_id(customer_id)
         if not customer_id:
             raise ToolError("No customer_id provided and no default configured")
 
@@ -599,9 +639,13 @@ def google_get_account_summary(
                 total_conversion_value += row.metrics.conversions_value
 
         # Calculate averages
-        avg_ctr = (total_clicks / total_impressions * 100) if total_impressions > 0 else 0
+        avg_ctr = (
+            (total_clicks / total_impressions * 100) if total_impressions > 0 else 0
+        )
         avg_cpc = (total_cost_micros / total_clicks) if total_clicks > 0 else 0
-        cost_per_conv = (total_cost_micros / total_conversions) if total_conversions > 0 else 0
+        cost_per_conv = (
+            (total_cost_micros / total_conversions) if total_conversions > 0 else 0
+        )
 
         # Count active campaigns
         campaign_query = """

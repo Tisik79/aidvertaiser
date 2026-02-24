@@ -10,7 +10,15 @@ from google.ads.googleads.errors import GoogleAdsException
 from mcp.server.fastmcp.exceptions import ToolError
 
 from ..server import mcp
-from .client import get_google_ads_client, clean_customer_id, format_error, get_default_customer_id, get_enum_name, get_enum_value, micros_to_currency, currency_to_micros
+from .client import (
+    get_google_ads_client,
+    format_error,
+    resolve_customer_id,
+    get_enum_name,
+    get_enum_value,
+    micros_to_currency,
+    currency_to_micros,
+)
 
 
 @mcp.tool()
@@ -47,7 +55,7 @@ def google_list_ad_groups(
     """
     try:
         client = get_google_ads_client(login_customer_id=login_customer_id)
-        customer_id = clean_customer_id(customer_id or get_default_customer_id() or "")
+        customer_id = resolve_customer_id(customer_id)
         if not customer_id:
             raise ToolError("No customer_id provided and no default configured")
 
@@ -87,19 +95,25 @@ def google_list_ad_groups(
         ad_groups = []
         for batch in response:
             for row in batch.results:
-                ad_groups.append({
-                    "id": str(row.ad_group.id),
-                    "name": row.ad_group.name,
-                    "status": get_enum_name(client, "AdGroupStatusEnum", row.ad_group.status),
-                    "type": get_enum_name(client, "AdGroupTypeEnum", row.ad_group.type_),
-                    "cpc_bid": micros_to_currency(row.ad_group.cpc_bid_micros),
-                    "campaign_id": str(row.campaign.id),
-                    "campaign_name": row.campaign.name,
-                    "impressions": row.metrics.impressions,
-                    "clicks": row.metrics.clicks,
-                    "cost": micros_to_currency(row.metrics.cost_micros),
-                    "conversions": row.metrics.conversions,
-                })
+                ad_groups.append(
+                    {
+                        "id": str(row.ad_group.id),
+                        "name": row.ad_group.name,
+                        "status": get_enum_name(
+                            client, "AdGroupStatusEnum", row.ad_group.status
+                        ),
+                        "type": get_enum_name(
+                            client, "AdGroupTypeEnum", row.ad_group.type_
+                        ),
+                        "cpc_bid": micros_to_currency(row.ad_group.cpc_bid_micros),
+                        "campaign_id": str(row.campaign.id),
+                        "campaign_name": row.campaign.name,
+                        "impressions": row.metrics.impressions,
+                        "clicks": row.metrics.clicks,
+                        "cost": micros_to_currency(row.metrics.cost_micros),
+                        "conversions": row.metrics.conversions,
+                    }
+                )
 
         return ad_groups
 
@@ -143,7 +157,7 @@ def google_get_ad_group(
     """
     try:
         client = get_google_ads_client(login_customer_id=login_customer_id)
-        customer_id = clean_customer_id(customer_id or get_default_customer_id() or "")
+        customer_id = resolve_customer_id(customer_id)
         if not customer_id:
             raise ToolError("No customer_id provided and no default configured")
 
@@ -179,11 +193,17 @@ def google_get_ad_group(
                 return {
                     "id": str(row.ad_group.id),
                     "name": row.ad_group.name,
-                    "status": get_enum_name(client, "AdGroupStatusEnum", row.ad_group.status),
-                    "type": get_enum_name(client, "AdGroupTypeEnum", row.ad_group.type_),
+                    "status": get_enum_name(
+                        client, "AdGroupStatusEnum", row.ad_group.status
+                    ),
+                    "type": get_enum_name(
+                        client, "AdGroupTypeEnum", row.ad_group.type_
+                    ),
                     "cpc_bid": micros_to_currency(row.ad_group.cpc_bid_micros),
                     "cpm_bid": micros_to_currency(row.ad_group.cpm_bid_micros),
-                    "effective_target_cpa": micros_to_currency(row.ad_group.effective_target_cpa_micros),
+                    "effective_target_cpa": micros_to_currency(
+                        row.ad_group.effective_target_cpa_micros
+                    ),
                     "target_roas": row.ad_group.target_roas,
                     "campaign_id": str(row.campaign.id),
                     "campaign_name": row.campaign.name,
@@ -238,7 +258,7 @@ def google_create_ad_group(
     """
     try:
         client = get_google_ads_client(login_customer_id=login_customer_id)
-        customer_id = clean_customer_id(customer_id or get_default_customer_id() or "")
+        customer_id = resolve_customer_id(customer_id)
         if not customer_id:
             raise ToolError("No customer_id provided and no default configured")
 
@@ -298,7 +318,7 @@ def google_update_ad_group(
     """
     try:
         client = get_google_ads_client(login_customer_id=login_customer_id)
-        customer_id = clean_customer_id(customer_id or get_default_customer_id() or "")
+        customer_id = resolve_customer_id(customer_id)
         if not customer_id:
             raise ToolError("No customer_id provided and no default configured")
 
@@ -368,7 +388,7 @@ def google_delete_ad_group(
     """
     try:
         client = get_google_ads_client(login_customer_id=login_customer_id)
-        customer_id = clean_customer_id(customer_id or get_default_customer_id() or "")
+        customer_id = resolve_customer_id(customer_id)
         if not customer_id:
             raise ToolError("No customer_id provided and no default configured")
 

@@ -10,7 +10,15 @@ from google.ads.googleads.errors import GoogleAdsException
 from mcp.server.fastmcp.exceptions import ToolError
 
 from ..server import mcp
-from .client import get_google_ads_client, clean_customer_id, format_error, get_default_customer_id, get_enum_name, get_enum_value, micros_to_currency, currency_to_micros
+from .client import (
+    get_google_ads_client,
+    format_error,
+    resolve_customer_id,
+    get_enum_name,
+    get_enum_value,
+    micros_to_currency,
+    currency_to_micros,
+)
 
 
 @mcp.tool()
@@ -49,10 +57,9 @@ def google_list_keywords(
     """
     try:
         client = get_google_ads_client(login_customer_id=login_customer_id)
-        customer_id = clean_customer_id(customer_id or get_default_customer_id() or "")
+        customer_id = resolve_customer_id(customer_id)
         if not customer_id:
             raise ToolError("No customer_id provided and no default configured")
-
 
         query = """
             SELECT
@@ -93,22 +100,35 @@ def google_list_keywords(
         keywords = []
         for batch in response:
             for row in batch.results:
-                keywords.append({
-                    "id": str(row.ad_group_criterion.criterion_id),
-                    "ad_group_id": str(row.ad_group.id),
-                    "ad_group_name": row.ad_group.name,
-                    "campaign_id": str(row.campaign.id),
-                    "campaign_name": row.campaign.name,
-                    "keyword_text": row.ad_group_criterion.keyword.text,
-                    "match_type": get_enum_name(client, "KeywordMatchTypeEnum", row.ad_group_criterion.keyword.match_type),
-                    "status": get_enum_name(client, "AdGroupCriterionStatusEnum", row.ad_group_criterion.status),
-                    "cpc_bid": micros_to_currency(row.ad_group_criterion.cpc_bid_micros),
-                    "quality_score": row.ad_group_criterion.quality_info.quality_score or None,
-                    "impressions": row.metrics.impressions,
-                    "clicks": row.metrics.clicks,
-                    "cost": micros_to_currency(row.metrics.cost_micros),
-                    "conversions": row.metrics.conversions,
-                })
+                keywords.append(
+                    {
+                        "id": str(row.ad_group_criterion.criterion_id),
+                        "ad_group_id": str(row.ad_group.id),
+                        "ad_group_name": row.ad_group.name,
+                        "campaign_id": str(row.campaign.id),
+                        "campaign_name": row.campaign.name,
+                        "keyword_text": row.ad_group_criterion.keyword.text,
+                        "match_type": get_enum_name(
+                            client,
+                            "KeywordMatchTypeEnum",
+                            row.ad_group_criterion.keyword.match_type,
+                        ),
+                        "status": get_enum_name(
+                            client,
+                            "AdGroupCriterionStatusEnum",
+                            row.ad_group_criterion.status,
+                        ),
+                        "cpc_bid": micros_to_currency(
+                            row.ad_group_criterion.cpc_bid_micros
+                        ),
+                        "quality_score": row.ad_group_criterion.quality_info.quality_score
+                        or None,
+                        "impressions": row.metrics.impressions,
+                        "clicks": row.metrics.clicks,
+                        "cost": micros_to_currency(row.metrics.cost_micros),
+                        "conversions": row.metrics.conversions,
+                    }
+                )
 
         return keywords
 
@@ -150,10 +170,9 @@ def google_get_keyword(
     """
     try:
         client = get_google_ads_client(login_customer_id=login_customer_id)
-        customer_id = clean_customer_id(customer_id or get_default_customer_id() or "")
+        customer_id = resolve_customer_id(customer_id)
         if not customer_id:
             raise ToolError("No customer_id provided and no default configured")
-
 
         query = f"""
             SELECT
@@ -199,14 +218,42 @@ def google_get_keyword(
                     "campaign_id": str(row.campaign.id),
                     "campaign_name": row.campaign.name,
                     "keyword_text": row.ad_group_criterion.keyword.text,
-                    "match_type": get_enum_name(client, "KeywordMatchTypeEnum", row.ad_group_criterion.keyword.match_type),
-                    "status": get_enum_name(client, "AdGroupCriterionStatusEnum", row.ad_group_criterion.status),
-                    "cpc_bid": micros_to_currency(row.ad_group_criterion.cpc_bid_micros),
+                    "match_type": get_enum_name(
+                        client,
+                        "KeywordMatchTypeEnum",
+                        row.ad_group_criterion.keyword.match_type,
+                    ),
+                    "status": get_enum_name(
+                        client,
+                        "AdGroupCriterionStatusEnum",
+                        row.ad_group_criterion.status,
+                    ),
+                    "cpc_bid": micros_to_currency(
+                        row.ad_group_criterion.cpc_bid_micros
+                    ),
                     "final_urls": list(row.ad_group_criterion.final_urls),
                     "quality_score": quality_info.quality_score or None,
-                    "creative_quality_score": get_enum_name(client, "QualityScoreBucketEnum", quality_info.creative_quality_score) if quality_info.creative_quality_score else None,
-                    "post_click_quality_score": get_enum_name(client, "QualityScoreBucketEnum", quality_info.post_click_quality_score) if quality_info.post_click_quality_score else None,
-                    "search_predicted_ctr": get_enum_name(client, "QualityScoreBucketEnum", quality_info.search_predicted_ctr) if quality_info.search_predicted_ctr else None,
+                    "creative_quality_score": get_enum_name(
+                        client,
+                        "QualityScoreBucketEnum",
+                        quality_info.creative_quality_score,
+                    )
+                    if quality_info.creative_quality_score
+                    else None,
+                    "post_click_quality_score": get_enum_name(
+                        client,
+                        "QualityScoreBucketEnum",
+                        quality_info.post_click_quality_score,
+                    )
+                    if quality_info.post_click_quality_score
+                    else None,
+                    "search_predicted_ctr": get_enum_name(
+                        client,
+                        "QualityScoreBucketEnum",
+                        quality_info.search_predicted_ctr,
+                    )
+                    if quality_info.search_predicted_ctr
+                    else None,
                     "impressions": row.metrics.impressions,
                     "clicks": row.metrics.clicks,
                     "cost": micros_to_currency(row.metrics.cost_micros),
@@ -260,10 +307,9 @@ def google_add_keywords(
 
     try:
         client = get_google_ads_client(login_customer_id=login_customer_id)
-        customer_id = clean_customer_id(customer_id or get_default_customer_id() or "")
+        customer_id = resolve_customer_id(customer_id)
         if not customer_id:
             raise ToolError("No customer_id provided and no default configured")
-
 
         ad_group_criterion_service = client.get_service("AdGroupCriterionService")
         operations = []
@@ -273,10 +319,14 @@ def google_add_keywords(
             criterion = operation.create
 
             criterion.ad_group = f"customers/{customer_id}/adGroups/{ad_group_id}"
-            criterion.status = get_enum_value(client, "AdGroupCriterionStatusEnum", status)
+            criterion.status = get_enum_value(
+                client, "AdGroupCriterionStatusEnum", status
+            )
 
             criterion.keyword.text = keyword_text
-            criterion.keyword.match_type = get_enum_value(client, "KeywordMatchTypeEnum", match_type)
+            criterion.keyword.match_type = get_enum_value(
+                client, "KeywordMatchTypeEnum", match_type
+            )
 
             if cpc_bid is not None:
                 criterion.cpc_bid_micros = currency_to_micros(cpc_bid)
@@ -289,8 +339,7 @@ def google_add_keywords(
         )
 
         keyword_ids = [
-            result.resource_name.split("~")[-1]
-            for result in response.results
+            result.resource_name.split("~")[-1] for result in response.results
         ]
 
         return {
@@ -339,21 +388,24 @@ def google_update_keyword(
     """
     try:
         client = get_google_ads_client(login_customer_id=login_customer_id)
-        customer_id = clean_customer_id(customer_id or get_default_customer_id() or "")
+        customer_id = resolve_customer_id(customer_id)
         if not customer_id:
             raise ToolError("No customer_id provided and no default configured")
-
 
         ad_group_criterion_service = client.get_service("AdGroupCriterionService")
         operation = client.get_type("AdGroupCriterionOperation")
         criterion = operation.update
 
-        criterion.resource_name = f"customers/{customer_id}/adGroupCriteria/{ad_group_id}~{keyword_id}"
+        criterion.resource_name = (
+            f"customers/{customer_id}/adGroupCriteria/{ad_group_id}~{keyword_id}"
+        )
 
         field_mask = []
 
         if status is not None:
-            criterion.status = get_enum_value(client, "AdGroupCriterionStatusEnum", status)
+            criterion.status = get_enum_value(
+                client, "AdGroupCriterionStatusEnum", status
+            )
             field_mask.append("status")
 
         if cpc_bid is not None:
@@ -413,14 +465,15 @@ def google_remove_keyword(
     """
     try:
         client = get_google_ads_client(login_customer_id=login_customer_id)
-        customer_id = clean_customer_id(customer_id or get_default_customer_id() or "")
+        customer_id = resolve_customer_id(customer_id)
         if not customer_id:
             raise ToolError("No customer_id provided and no default configured")
 
-
         ad_group_criterion_service = client.get_service("AdGroupCriterionService")
         operation = client.get_type("AdGroupCriterionOperation")
-        operation.remove = f"customers/{customer_id}/adGroupCriteria/{ad_group_id}~{keyword_id}"
+        operation.remove = (
+            f"customers/{customer_id}/adGroupCriteria/{ad_group_id}~{keyword_id}"
+        )
 
         response = ad_group_criterion_service.mutate_ad_group_criteria(
             customer_id=customer_id,
@@ -473,10 +526,9 @@ def google_add_negative_keywords(
 
     try:
         client = get_google_ads_client(login_customer_id=login_customer_id)
-        customer_id = clean_customer_id(customer_id or get_default_customer_id() or "")
+        customer_id = resolve_customer_id(customer_id)
         if not customer_id:
             raise ToolError("No customer_id provided and no default configured")
-
 
         ad_group_criterion_service = client.get_service("AdGroupCriterionService")
         operations = []
@@ -489,7 +541,9 @@ def google_add_negative_keywords(
             criterion.negative = True
 
             criterion.keyword.text = keyword_text
-            criterion.keyword.match_type = get_enum_value(client, "KeywordMatchTypeEnum", match_type)
+            criterion.keyword.match_type = get_enum_value(
+                client, "KeywordMatchTypeEnum", match_type
+            )
 
             operations.append(operation)
 
@@ -499,8 +553,7 @@ def google_add_negative_keywords(
         )
 
         keyword_ids = [
-            result.resource_name.split("~")[-1]
-            for result in response.results
+            result.resource_name.split("~")[-1] for result in response.results
         ]
 
         return {
@@ -546,7 +599,7 @@ def google_list_negative_keywords(
     """
     try:
         client = get_google_ads_client(login_customer_id=login_customer_id)
-        customer_id = clean_customer_id(customer_id or get_default_customer_id() or "")
+        customer_id = resolve_customer_id(customer_id)
         if not customer_id:
             raise ToolError("No customer_id provided and no default configured")
 
@@ -586,17 +639,27 @@ def google_list_negative_keywords(
         keywords = []
         for batch in response:
             for row in batch.results:
-                keywords.append({
-                    "id": str(row.ad_group_criterion.criterion_id),
-                    "ad_group_id": str(row.ad_group.id),
-                    "ad_group_name": row.ad_group.name,
-                    "campaign_id": str(row.campaign.id),
-                    "campaign_name": row.campaign.name,
-                    "keyword_text": row.ad_group_criterion.keyword.text,
-                    "match_type": get_enum_name(client, "KeywordMatchTypeEnum", row.ad_group_criterion.keyword.match_type),
-                    "status": get_enum_name(client, "AdGroupCriterionStatusEnum", row.ad_group_criterion.status),
-                    "level": "ad_group",
-                })
+                keywords.append(
+                    {
+                        "id": str(row.ad_group_criterion.criterion_id),
+                        "ad_group_id": str(row.ad_group.id),
+                        "ad_group_name": row.ad_group.name,
+                        "campaign_id": str(row.campaign.id),
+                        "campaign_name": row.campaign.name,
+                        "keyword_text": row.ad_group_criterion.keyword.text,
+                        "match_type": get_enum_name(
+                            client,
+                            "KeywordMatchTypeEnum",
+                            row.ad_group_criterion.keyword.match_type,
+                        ),
+                        "status": get_enum_name(
+                            client,
+                            "AdGroupCriterionStatusEnum",
+                            row.ad_group_criterion.status,
+                        ),
+                        "level": "ad_group",
+                    }
+                )
 
         return keywords
 
@@ -630,13 +693,15 @@ def google_remove_negative_keyword(
     """
     try:
         client = get_google_ads_client(login_customer_id=login_customer_id)
-        customer_id = clean_customer_id(customer_id or get_default_customer_id() or "")
+        customer_id = resolve_customer_id(customer_id)
         if not customer_id:
             raise ToolError("No customer_id provided and no default configured")
 
         ad_group_criterion_service = client.get_service("AdGroupCriterionService")
         operation = client.get_type("AdGroupCriterionOperation")
-        operation.remove = f"customers/{customer_id}/adGroupCriteria/{ad_group_id}~{keyword_id}"
+        operation.remove = (
+            f"customers/{customer_id}/adGroupCriteria/{ad_group_id}~{keyword_id}"
+        )
 
         response = ad_group_criterion_service.mutate_ad_group_criteria(
             customer_id=customer_id,
@@ -691,7 +756,7 @@ def google_add_campaign_negative_keywords(
 
     try:
         client = get_google_ads_client(login_customer_id=login_customer_id)
-        customer_id = clean_customer_id(customer_id or get_default_customer_id() or "")
+        customer_id = resolve_customer_id(customer_id)
         if not customer_id:
             raise ToolError("No customer_id provided and no default configured")
 
@@ -706,7 +771,9 @@ def google_add_campaign_negative_keywords(
             criterion.negative = True
 
             criterion.keyword.text = keyword_text
-            criterion.keyword.match_type = get_enum_value(client, "KeywordMatchTypeEnum", match_type)
+            criterion.keyword.match_type = get_enum_value(
+                client, "KeywordMatchTypeEnum", match_type
+            )
 
             operations.append(operation)
 
@@ -716,8 +783,7 @@ def google_add_campaign_negative_keywords(
         )
 
         keyword_ids = [
-            result.resource_name.split("~")[-1]
-            for result in response.results
+            result.resource_name.split("~")[-1] for result in response.results
         ]
 
         return {
@@ -759,7 +825,7 @@ def google_list_campaign_negative_keywords(
     """
     try:
         client = get_google_ads_client(login_customer_id=login_customer_id)
-        customer_id = clean_customer_id(customer_id or get_default_customer_id() or "")
+        customer_id = resolve_customer_id(customer_id)
         if not customer_id:
             raise ToolError("No customer_id provided and no default configured")
 
@@ -790,14 +856,20 @@ def google_list_campaign_negative_keywords(
         keywords = []
         for batch in response:
             for row in batch.results:
-                keywords.append({
-                    "id": str(row.campaign_criterion.criterion_id),
-                    "campaign_id": str(row.campaign.id),
-                    "campaign_name": row.campaign.name,
-                    "keyword_text": row.campaign_criterion.keyword.text,
-                    "match_type": get_enum_name(client, "KeywordMatchTypeEnum", row.campaign_criterion.keyword.match_type),
-                    "level": "campaign",
-                })
+                keywords.append(
+                    {
+                        "id": str(row.campaign_criterion.criterion_id),
+                        "campaign_id": str(row.campaign.id),
+                        "campaign_name": row.campaign.name,
+                        "keyword_text": row.campaign_criterion.keyword.text,
+                        "match_type": get_enum_name(
+                            client,
+                            "KeywordMatchTypeEnum",
+                            row.campaign_criterion.keyword.match_type,
+                        ),
+                        "level": "campaign",
+                    }
+                )
 
         return keywords
 
@@ -831,13 +903,15 @@ def google_remove_campaign_negative_keyword(
     """
     try:
         client = get_google_ads_client(login_customer_id=login_customer_id)
-        customer_id = clean_customer_id(customer_id or get_default_customer_id() or "")
+        customer_id = resolve_customer_id(customer_id)
         if not customer_id:
             raise ToolError("No customer_id provided and no default configured")
 
         campaign_criterion_service = client.get_service("CampaignCriterionService")
         operation = client.get_type("CampaignCriterionOperation")
-        operation.remove = f"customers/{customer_id}/campaignCriteria/{campaign_id}~{keyword_id}"
+        operation.remove = (
+            f"customers/{customer_id}/campaignCriteria/{campaign_id}~{keyword_id}"
+        )
 
         response = campaign_criterion_service.mutate_campaign_criteria(
             customer_id=customer_id,

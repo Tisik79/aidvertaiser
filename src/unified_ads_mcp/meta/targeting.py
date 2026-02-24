@@ -12,16 +12,14 @@ from .client import (
     make_api_request,
     meta_api_tool,
     ensure_account_prefix,
-    get_default_account_id,
+    resolve_account_id,
 )
 
 
 @mcp.tool()
 @meta_api_tool
 async def meta_search_interests(
-    query: str,
-    access_token: Optional[str] = None,
-    limit: int = 25
+    query: str, access_token: Optional[str] = None, limit: int = 25
 ) -> dict:
     """Search for interest targeting options by keyword.
 
@@ -51,11 +49,7 @@ async def meta_search_interests(
         return {"error": {"message": "query is required"}}
 
     endpoint = "search"
-    params = {
-        "type": "adinterest",
-        "q": query,
-        "limit": limit
-    }
+    params = {"type": "adinterest", "q": query, "limit": limit}
 
     data = await make_api_request(endpoint, access_token, params)
     return data
@@ -64,9 +58,7 @@ async def meta_search_interests(
 @mcp.tool()
 @meta_api_tool
 async def meta_get_interest_suggestions(
-    interest_list: List[str],
-    access_token: Optional[str] = None,
-    limit: int = 25
+    interest_list: List[str], access_token: Optional[str] = None, limit: int = 25
 ) -> dict:
     """Get interest suggestions based on existing interests.
 
@@ -99,7 +91,7 @@ async def meta_get_interest_suggestions(
     params = {
         "type": "adinterestsuggestion",
         "interest_list": json.dumps(interest_list),
-        "limit": limit
+        "limit": limit,
     }
 
     data = await make_api_request(endpoint, access_token, params)
@@ -112,7 +104,7 @@ async def meta_search_geo_locations(
     query: str,
     access_token: Optional[str] = None,
     location_types: Optional[List[str]] = None,
-    limit: int = 25
+    limit: int = 25,
 ) -> dict:
     """Search for geographic targeting locations.
 
@@ -152,11 +144,7 @@ async def meta_search_geo_locations(
         return {"error": {"message": "query is required"}}
 
     endpoint = "search"
-    params = {
-        "type": "adgeolocation",
-        "q": query,
-        "limit": limit
-    }
+    params = {"type": "adgeolocation", "q": query, "limit": limit}
 
     if location_types:
         params["location_types"] = json.dumps(location_types)
@@ -168,8 +156,7 @@ async def meta_search_geo_locations(
 @mcp.tool()
 @meta_api_tool
 async def meta_search_behaviors(
-    access_token: Optional[str] = None,
-    limit: int = 50
+    access_token: Optional[str] = None, limit: int = 50
 ) -> dict:
     """Get available behavior targeting options.
 
@@ -196,11 +183,7 @@ async def meta_search_behaviors(
         ...     print(f"{behavior['name']}: {behavior.get('description', 'N/A')}")
     """
     endpoint = "search"
-    params = {
-        "type": "adTargetingCategory",
-        "class": "behaviors",
-        "limit": limit
-    }
+    params = {"type": "adTargetingCategory", "class": "behaviors", "limit": limit}
 
     data = await make_api_request(endpoint, access_token, params)
     return data
@@ -212,7 +195,7 @@ async def meta_estimate_audience_size(
     targeting: Dict[str, Any],
     account_id: Optional[str] = None,
     access_token: Optional[str] = None,
-    optimization_goal: str = "REACH"
+    optimization_goal: str = "REACH",
 ) -> dict:
     """Estimate audience size for targeting specifications.
 
@@ -269,9 +252,13 @@ async def meta_estimate_audience_size(
         ... )
         >>> print(f"Estimated reach: {estimate['estimated_audience_size']:,}")
     """
-    account_id = account_id or get_default_account_id()
+    account_id = resolve_account_id(account_id)
     if not account_id:
-        return {"error": {"message": "account_id is required - configure default_account_id in meta-ads.yaml"}}
+        return {
+            "error": {
+                "message": "account_id is required - configure default_account_id in meta-ads.yaml or META_DEFAULT_ACCOUNT_ID"
+            }
+        }
     if not targeting:
         return {
             "error": {
@@ -280,10 +267,8 @@ async def meta_estimate_audience_size(
                     "age_min": 25,
                     "age_max": 65,
                     "geo_locations": {"countries": ["US"]},
-                    "flexible_spec": [
-                        {"interests": [{"id": "6003139266461"}]}
-                    ]
-                }
+                    "flexible_spec": [{"interests": [{"id": "6003139266461"}]}],
+                },
             }
         }
 
@@ -293,7 +278,14 @@ async def meta_estimate_audience_size(
     geo = targeting.get("geo_locations", {})
     has_location = any(
         isinstance(geo.get(k), list) and len(geo.get(k)) > 0
-        for k in ["countries", "regions", "cities", "zips", "geo_markets", "country_groups"]
+        for k in [
+            "countries",
+            "regions",
+            "cities",
+            "zips",
+            "geo_markets",
+            "country_groups",
+        ]
     )
     has_custom_audience = bool(targeting.get("custom_audiences"))
 
@@ -305,15 +297,13 @@ async def meta_estimate_audience_size(
                 "example": {
                     "geo_locations": {"countries": ["US"]},
                     "age_min": 25,
-                    "age_max": 65
-                }
+                    "age_max": 65,
+                },
             }
         }
 
     endpoint = f"{account_id}/reachestimate"
-    params = {
-        "targeting_spec": targeting
-    }
+    params = {"targeting_spec": targeting}
 
     try:
         data = await make_api_request(endpoint, access_token, params, method="GET")
@@ -344,8 +334,8 @@ async def meta_estimate_audience_size(
                     "estimate_details": {
                         "users_lower_bound": lower,
                         "users_upper_bound": upper,
-                        "estimate_ready": estimate_ready
-                    }
+                        "estimate_ready": estimate_ready,
+                    },
                 }
 
             # Handle list structure
@@ -360,14 +350,16 @@ async def meta_estimate_audience_size(
                     "estimate_details": {
                         "monthly_active_users": estimate_data.get("estimate_mau", 0),
                         "daily_outcomes_curve": estimate_data.get("estimate_dau", []),
-                        "unsupported_targeting": estimate_data.get("unsupported_targeting", [])
-                    }
+                        "unsupported_targeting": estimate_data.get(
+                            "unsupported_targeting", []
+                        ),
+                    },
                 }
 
         return {
             "error": {
                 "message": "No estimation data returned from Meta API",
-                "raw_response": data
+                "raw_response": data,
             }
         }
 
@@ -375,6 +367,6 @@ async def meta_estimate_audience_size(
         return {
             "error": {
                 "message": f"Failed to get audience estimation: {str(e)}",
-                "details": "Check targeting parameters and account permissions"
+                "details": "Check targeting parameters and account permissions",
             }
         }

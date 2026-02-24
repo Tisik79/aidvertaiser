@@ -32,12 +32,14 @@ mcp = FastMCP(
     - Requires developer_token, client_id, client_secret in config
     - Set default_customer_id in config to avoid specifying customer_id on every call
     - When default_customer_id is set, DO NOT list accounts - just use the tools directly
+    - Set ONLY_DEFAULT_ACCOUNT=1 to force using the default account and disable account listing tools
     - Use google_run_query for any GAQL queries
 
     META ADS:
     - Configure via META_APP_ID and META_APP_SECRET env vars
     - Set META_DEFAULT_ACCOUNT_ID env var to avoid specifying account_id on every call
     - When default account is set, DO NOT list accounts - just use the tools directly
+    - Set ONLY_DEFAULT_ACCOUNT=1 to force using the default account and disable account listing tools
     - Default app ID: 779761636818489
     - Tokens auto-refresh via browser OAuth when expired
 
@@ -46,6 +48,8 @@ mcp = FastMCP(
     Just use the tools directly - they will use the default account automatically.
     Only call list_accounts if the user explicitly asks to see their accounts or
     if a tool fails because no account is configured.
+    If ONLY_DEFAULT_ACCOUNT is set, account listing tools are disabled and all tools
+    will use the configured default account ID.
 
     COMMON WORKFLOWS:
     1. Use tools directly (they use default account if configured)

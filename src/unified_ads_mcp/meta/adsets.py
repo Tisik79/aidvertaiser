@@ -12,7 +12,7 @@ from .client import (
     make_api_request,
     meta_api_tool,
     ensure_account_prefix,
-    get_default_account_id,
+    resolve_account_id,
 )
 
 
@@ -23,7 +23,7 @@ async def meta_list_adsets(
     access_token: Optional[str] = None,
     campaign_id: Optional[str] = None,
     limit: int = 25,
-    after: Optional[str] = None
+    after: Optional[str] = None,
 ) -> dict:
     """List ad sets for a Meta Ads account with optional campaign filtering.
 
@@ -48,9 +48,13 @@ async def meta_list_adsets(
         >>> for adset in adsets["data"]:
         ...     print(f"{adset['name']}: {adset['optimization_goal']}")
     """
-    account_id = account_id or get_default_account_id()
+    account_id = resolve_account_id(account_id)
     if not account_id:
-        return {"error": {"message": "account_id is required - configure default_account_id in meta-ads.yaml"}}
+        return {
+            "error": {
+                "message": "account_id is required - configure default_account_id in meta-ads.yaml or META_DEFAULT_ACCOUNT_ID"
+            }
+        }
 
     account_id = ensure_account_prefix(account_id)
 
@@ -62,7 +66,7 @@ async def meta_list_adsets(
 
     params = {
         "fields": "id,name,campaign_id,status,effective_status,daily_budget,lifetime_budget,targeting,bid_amount,bid_strategy,optimization_goal,billing_event,start_time,end_time,created_time,updated_time,is_dynamic_creative,frequency_control_specs",
-        "limit": limit
+        "limit": limit,
     }
 
     if after:
@@ -75,8 +79,7 @@ async def meta_list_adsets(
 @mcp.tool()
 @meta_api_tool
 async def meta_get_adset_details(
-    adset_id: str,
-    access_token: Optional[str] = None
+    adset_id: str, access_token: Optional[str] = None
 ) -> dict:
     """Get detailed information about a specific ad set.
 
@@ -143,7 +146,7 @@ async def meta_create_adset(
     end_time: Optional[str] = None,
     destination_type: Optional[str] = None,
     promoted_object: Optional[Dict[str, Any]] = None,
-    is_dynamic_creative: Optional[bool] = None
+    is_dynamic_creative: Optional[bool] = None,
 ) -> dict:
     """Create a new ad set in a Meta Ads campaign.
 
@@ -211,9 +214,13 @@ async def meta_create_adset(
         ...     daily_budget=2500  # $25/day
         ... )
     """
-    account_id = account_id or get_default_account_id()
+    account_id = resolve_account_id(account_id)
     if not account_id:
-        return {"error": {"message": "account_id is required - configure default_account_id in meta-ads.yaml"}}
+        return {
+            "error": {
+                "message": "account_id is required - configure default_account_id in meta-ads.yaml or META_DEFAULT_ACCOUNT_ID"
+            }
+        }
     if not campaign_id:
         return {"error": {"message": "campaign_id is required"}}
     if not name:
@@ -233,17 +240,20 @@ async def meta_create_adset(
             return {
                 "error": {
                     "message": "promoted_object is required for APP_INSTALLS optimization",
-                    "required_fields": ["application_id", "object_store_url"]
+                    "required_fields": ["application_id", "object_store_url"],
                 }
             }
-        if "application_id" not in promoted_object or "object_store_url" not in promoted_object:
+        if (
+            "application_id" not in promoted_object
+            or "object_store_url" not in promoted_object
+        ):
             return {
                 "error": {
                     "message": "promoted_object must include application_id and object_store_url",
                     "example": {
                         "application_id": "123456789012345",
-                        "object_store_url": "https://apps.apple.com/app/id123456789"
-                    }
+                        "object_store_url": "https://apps.apple.com/app/id123456789",
+                    },
                 }
             }
 
@@ -255,7 +265,7 @@ async def meta_create_adset(
         "status": status,
         "optimization_goal": optimization_goal,
         "billing_event": billing_event,
-        "targeting": json.dumps(targeting)
+        "targeting": json.dumps(targeting),
     }
 
     if daily_budget is not None:
@@ -289,12 +299,7 @@ async def meta_create_adset(
         data = await make_api_request(endpoint, access_token, params, method="POST")
         return data
     except Exception as e:
-        return {
-            "error": {
-                "message": "Failed to create ad set",
-                "details": str(e)
-            }
-        }
+        return {"error": {"message": "Failed to create ad set", "details": str(e)}}
 
 
 @mcp.tool()
@@ -311,7 +316,7 @@ async def meta_update_adset(
     bid_strategy: Optional[str] = None,
     optimization_goal: Optional[str] = None,
     frequency_control_specs: Optional[List[Dict[str, Any]]] = None,
-    is_dynamic_creative: Optional[bool] = None
+    is_dynamic_creative: Optional[bool] = None,
 ) -> dict:
     """Update an existing ad set's settings.
 
@@ -367,7 +372,9 @@ async def meta_update_adset(
         params["lifetime_budget"] = str(lifetime_budget)
 
     if targeting is not None:
-        params["targeting"] = json.dumps(targeting) if isinstance(targeting, dict) else targeting
+        params["targeting"] = (
+            json.dumps(targeting) if isinstance(targeting, dict) else targeting
+        )
 
     if bid_amount is not None:
         params["bid_amount"] = str(bid_amount)
@@ -396,6 +403,6 @@ async def meta_update_adset(
         return {
             "error": {
                 "message": f"Failed to update ad set {adset_id}",
-                "details": str(e)
+                "details": str(e),
             }
         }

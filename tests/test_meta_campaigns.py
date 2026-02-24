@@ -79,8 +79,7 @@ class TestAccountListing:
     async def test_get_account_info(self, meta_access_token, meta_account_id):
         """Test getting account details."""
         result = await meta_get_account_info(
-            account_id=meta_account_id,
-            access_token=meta_access_token
+            account_id=meta_account_id, access_token=meta_access_token
         )
 
         assert "error" not in result
@@ -99,9 +98,7 @@ class TestCampaignListing:
     async def test_list_all_campaigns(self, meta_access_token, meta_account_id):
         """Test listing all campaigns."""
         result = await meta_list_campaigns(
-            account_id=meta_account_id,
-            access_token=meta_access_token,
-            limit=50
+            account_id=meta_account_id, access_token=meta_access_token, limit=50
         )
 
         assert "error" not in result
@@ -117,9 +114,7 @@ class TestCampaignListing:
     async def test_list_paused_campaigns(self, meta_access_token, meta_account_id):
         """Test filtering campaigns by status."""
         result = await meta_list_campaigns(
-            account_id=meta_account_id,
-            access_token=meta_access_token,
-            status="PAUSED"
+            account_id=meta_account_id, access_token=meta_access_token, status="PAUSED"
         )
 
         assert "error" not in result
@@ -130,14 +125,19 @@ class TestCampaignListing:
 
         # Verify all are PAUSED
         for camp in campaigns:
-            assert camp.get("effective_status") == "PAUSED" or camp.get("status") == "PAUSED"
+            assert (
+                camp.get("effective_status") == "PAUSED"
+                or camp.get("status") == "PAUSED"
+            )
 
 
 class TestCampaignCreation:
     """Test campaign creation with various configurations."""
 
     @pytest.mark.asyncio
-    async def test_create_traffic_campaign(self, meta_access_token, meta_account_id, test_entities):
+    async def test_create_traffic_campaign(
+        self, meta_access_token, meta_account_id, test_entities
+    ):
         """Test creating a traffic campaign."""
         timestamp = int(time.time())
         campaign_name = f"Test Traffic Campaign {timestamp}"
@@ -148,7 +148,7 @@ class TestCampaignCreation:
             account_id=meta_account_id,
             access_token=meta_access_token,
             status="PAUSED",
-            daily_budget=50000  # 500 CZK/day (Meta minimum is ~50 CZK)
+            daily_budget=50000,  # 500 CZK/day (Meta minimum is ~50 CZK)
         )
 
         assert "error" not in result, f"Failed to create campaign: {result}"
@@ -161,8 +161,7 @@ class TestCampaignCreation:
 
         # Verify campaign details
         details = await meta_get_campaign_details(
-            campaign_id=campaign_id,
-            access_token=meta_access_token
+            campaign_id=campaign_id, access_token=meta_access_token
         )
 
         assert details.get("name") == campaign_name
@@ -170,7 +169,9 @@ class TestCampaignCreation:
         assert details.get("status") == "PAUSED"
 
     @pytest.mark.asyncio
-    async def test_create_leads_campaign(self, meta_access_token, meta_account_id, test_entities):
+    async def test_create_leads_campaign(
+        self, meta_access_token, meta_account_id, test_entities
+    ):
         """Test creating a leads campaign."""
         timestamp = int(time.time())
         campaign_name = f"Test Leads Campaign {timestamp}"
@@ -182,7 +183,7 @@ class TestCampaignCreation:
             access_token=meta_access_token,
             status="PAUSED",
             daily_budget=50000,  # 500 CZK/day
-            bid_strategy="LOWEST_COST_WITHOUT_CAP"
+            bid_strategy="LOWEST_COST_WITHOUT_CAP",
         )
 
         assert "error" not in result, f"Failed to create campaign: {result}"
@@ -204,17 +205,14 @@ class TestCampaignCreation:
         # Update name
         new_name = f"Updated Test Campaign {int(time.time())}"
         result = await meta_update_campaign(
-            campaign_id=campaign_id,
-            access_token=meta_access_token,
-            name=new_name
+            campaign_id=campaign_id, access_token=meta_access_token, name=new_name
         )
 
         assert "error" not in result, f"Failed to update campaign: {result}"
 
         # Verify update
         details = await meta_get_campaign_details(
-            campaign_id=campaign_id,
-            access_token=meta_access_token
+            campaign_id=campaign_id, access_token=meta_access_token
         )
 
         assert details.get("name") == new_name
@@ -228,9 +226,7 @@ class TestAdSetManagement:
     async def test_list_adsets(self, meta_access_token, meta_account_id):
         """Test listing ad sets."""
         result = await meta_list_adsets(
-            account_id=meta_account_id,
-            access_token=meta_access_token,
-            limit=25
+            account_id=meta_account_id, access_token=meta_access_token, limit=25
         )
 
         assert "error" not in result
@@ -243,7 +239,9 @@ class TestAdSetManagement:
             print(f"  - {adset.get('name')} ({adset.get('status')})")
 
     @pytest.mark.asyncio
-    async def test_create_adset(self, meta_access_token, meta_account_id, test_entities):
+    async def test_create_adset(
+        self, meta_access_token, meta_account_id, test_entities
+    ):
         """Test creating an ad set with targeting."""
         if not test_entities["campaigns"]:
             pytest.skip("No test campaign available")
@@ -262,12 +260,12 @@ class TestAdSetManagement:
                 "age_min": 18,
                 "age_max": 65,
                 "geo_locations": {"countries": ["CZ"]},
-                "targeting_automation": {"advantage_audience": 1}
+                "targeting_automation": {"advantage_audience": 1},
             },
             account_id=meta_account_id,
             access_token=meta_access_token,
             status="PAUSED",
-            bid_amount=500  # 5 CZK bid cap
+            bid_amount=500,  # 5 CZK bid cap
         )
 
         assert "error" not in result, f"Failed to create ad set: {result}"
@@ -280,8 +278,7 @@ class TestAdSetManagement:
 
         # Verify details
         details = await meta_get_adset_details(
-            adset_id=adset_id,
-            access_token=meta_access_token
+            adset_id=adset_id, access_token=meta_access_token
         )
 
         assert details.get("status") == "PAUSED"
@@ -295,9 +292,7 @@ class TestAdManagement:
     async def test_list_ads(self, meta_access_token, meta_account_id):
         """Test listing ads."""
         result = await meta_list_ads(
-            account_id=meta_account_id,
-            access_token=meta_access_token,
-            limit=25
+            account_id=meta_account_id, access_token=meta_access_token, limit=25
         )
 
         assert "error" not in result
@@ -314,9 +309,7 @@ class TestAdManagement:
         """Test getting ad creatives."""
         # First get an ad
         ads_result = await meta_list_ads(
-            account_id=meta_account_id,
-            access_token=meta_access_token,
-            limit=5
+            account_id=meta_account_id, access_token=meta_access_token, limit=5
         )
 
         if not ads_result.get("data"):
@@ -325,8 +318,7 @@ class TestAdManagement:
         ad_id = ads_result["data"][0]["id"]
 
         result = await meta_get_ad_creatives(
-            ad_id=ad_id,
-            access_token=meta_access_token
+            ad_id=ad_id, access_token=meta_access_token
         )
 
         assert "error" not in result
@@ -346,7 +338,7 @@ class TestCampaignCleanup:
             result = await meta_update_campaign(
                 campaign_id=campaign_id,
                 access_token=meta_access_token,
-                status="DELETED"
+                status="DELETED",
             )
 
             if "error" not in result:

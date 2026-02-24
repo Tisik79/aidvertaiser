@@ -10,10 +10,21 @@ from google.ads.googleads.errors import GoogleAdsException
 from mcp.server.fastmcp.exceptions import ToolError
 
 from ..server import mcp
-from .client import get_google_ads_client, clean_customer_id, format_error, get_default_customer_id, get_enum_name, get_enum_value, micros_to_currency, currency_to_micros
+from ..config import only_default_account_enabled
+from .client import (
+    get_google_ads_client,
+    format_error,
+    resolve_customer_id,
+    get_enum_name,
+    get_enum_value,
+    micros_to_currency,
+    currency_to_micros,
+)
+
+ONLY_DEFAULT_ACCOUNT = only_default_account_enabled()
 
 
-@mcp.tool()
+@mcp.tool(enabled=not ONLY_DEFAULT_ACCOUNT)
 def google_list_accounts() -> list[dict[str, Any]]:
     """Lists all Google Ads customer accounts accessible by the authenticated user.
 
@@ -26,15 +37,14 @@ def google_list_accounts() -> list[dict[str, Any]]:
     Raises:
         ToolError: If the API request fails.
     """
+    if ONLY_DEFAULT_ACCOUNT:
+        raise ToolError("Account listing disabled because ONLY_DEFAULT_ACCOUNT is set")
     try:
         client = get_google_ads_client()
         customer_service = client.get_service("CustomerService")
         accounts = customer_service.list_accessible_customers().resource_names
 
-        return [
-            {"id": account.split("/")[-1]}
-            for account in accounts
-        ]
+        return [{"id": account.split("/")[-1]} for account in accounts]
     except GoogleAdsException as e:
         raise ToolError(format_error(e)) from e
 
@@ -73,7 +83,7 @@ def google_list_campaigns(
     """
     try:
         client = get_google_ads_client(login_customer_id=login_customer_id)
-        customer_id = clean_customer_id(customer_id or get_default_customer_id() or "")
+        customer_id = resolve_customer_id(customer_id)
         if not customer_id:
             raise ToolError("No customer_id provided and no default configured")
 
@@ -107,18 +117,26 @@ def google_list_campaigns(
         campaigns = []
         for batch in response:
             for row in batch.results:
-                campaigns.append({
-                    "id": str(row.campaign.id),
-                    "name": row.campaign.name,
-                    "status": get_enum_name(client, "CampaignStatusEnum", row.campaign.status),
-                    "channel_type": get_enum_name(client, "AdvertisingChannelTypeEnum", row.campaign.advertising_channel_type),
-                    "budget": micros_to_currency(row.campaign_budget.amount_micros),
-                    "start_date": row.campaign.start_date or None,
-                    "end_date": row.campaign.end_date or None,
-                    "impressions": row.metrics.impressions,
-                    "clicks": row.metrics.clicks,
-                    "cost": micros_to_currency(row.metrics.cost_micros),
-                })
+                campaigns.append(
+                    {
+                        "id": str(row.campaign.id),
+                        "name": row.campaign.name,
+                        "status": get_enum_name(
+                            client, "CampaignStatusEnum", row.campaign.status
+                        ),
+                        "channel_type": get_enum_name(
+                            client,
+                            "AdvertisingChannelTypeEnum",
+                            row.campaign.advertising_channel_type,
+                        ),
+                        "budget": micros_to_currency(row.campaign_budget.amount_micros),
+                        "start_date": row.campaign.start_date or None,
+                        "end_date": row.campaign.end_date or None,
+                        "impressions": row.metrics.impressions,
+                        "clicks": row.metrics.clicks,
+                        "cost": micros_to_currency(row.metrics.cost_micros),
+                    }
+                )
 
         return campaigns
 
@@ -166,7 +184,7 @@ def google_get_campaign(
     """
     try:
         client = get_google_ads_client(login_customer_id=login_customer_id)
-        customer_id = clean_customer_id(customer_id or get_default_customer_id() or "")
+        customer_id = resolve_customer_id(customer_id)
         if not customer_id:
             raise ToolError("No customer_id provided and no default configured")
 
@@ -205,11 +223,25 @@ def google_get_campaign(
                 return {
                     "id": str(row.campaign.id),
                     "name": row.campaign.name,
-                    "status": get_enum_name(client, "CampaignStatusEnum", row.campaign.status),
-                    "channel_type": get_enum_name(client, "AdvertisingChannelTypeEnum", row.campaign.advertising_channel_type),
-                    "channel_sub_type": get_enum_name(client, "AdvertisingChannelSubTypeEnum", row.campaign.advertising_channel_sub_type),
+                    "status": get_enum_name(
+                        client, "CampaignStatusEnum", row.campaign.status
+                    ),
+                    "channel_type": get_enum_name(
+                        client,
+                        "AdvertisingChannelTypeEnum",
+                        row.campaign.advertising_channel_type,
+                    ),
+                    "channel_sub_type": get_enum_name(
+                        client,
+                        "AdvertisingChannelSubTypeEnum",
+                        row.campaign.advertising_channel_sub_type,
+                    ),
                     "budget": micros_to_currency(row.campaign_budget.amount_micros),
-                    "budget_delivery_method": get_enum_name(client, "BudgetDeliveryMethodEnum", row.campaign_budget.delivery_method),
+                    "budget_delivery_method": get_enum_name(
+                        client,
+                        "BudgetDeliveryMethodEnum",
+                        row.campaign_budget.delivery_method,
+                    ),
                     "start_date": row.campaign.start_date or None,
                     "end_date": row.campaign.end_date or None,
                     "target_google_search": row.campaign.network_settings.target_google_search,
@@ -276,7 +308,7 @@ def google_create_campaign(
     """
     try:
         client = get_google_ads_client(login_customer_id=login_customer_id)
-        customer_id = clean_customer_id(customer_id or get_default_customer_id() or "")
+        customer_id = resolve_customer_id(customer_id)
         if not customer_id:
             raise ToolError("No customer_id provided and no default configured")
 
@@ -310,7 +342,9 @@ def google_create_campaign(
 
         # EU accounts require this field
         campaign.contains_eu_political_advertising = get_enum_value(
-            client, "EuPoliticalAdvertisingStatusEnum", "DOES_NOT_CONTAIN_EU_POLITICAL_ADVERTISING"
+            client,
+            "EuPoliticalAdvertisingStatusEnum",
+            "DOES_NOT_CONTAIN_EU_POLITICAL_ADVERTISING",
         )
 
         if start_date:
@@ -397,7 +431,7 @@ def google_create_pmax_campaign(
 
     try:
         client = get_google_ads_client(login_customer_id=login_customer_id)
-        customer_id = clean_customer_id(customer_id or get_default_customer_id() or "")
+        customer_id = resolve_customer_id(customer_id)
         if not customer_id:
             raise ToolError("No customer_id provided and no default configured")
 
@@ -412,7 +446,6 @@ def google_create_pmax_campaign(
         campaign_budget_service = client.get_service("CampaignBudgetService")
         campaign_service = client.get_service("CampaignService")
         asset_service = client.get_service("AssetService")
-        campaign_asset_service = client.get_service("CampaignAssetService")
 
         # Temporary resource IDs for atomic creation
         BUDGET_TEMP_ID = -1
@@ -444,7 +477,9 @@ def google_create_pmax_campaign(
         campaign.campaign_budget = campaign_budget_service.campaign_budget_path(
             customer_id, BUDGET_TEMP_ID
         )
-        campaign.advertising_channel_type = client.enums.AdvertisingChannelTypeEnum.PERFORMANCE_MAX
+        campaign.advertising_channel_type = (
+            client.enums.AdvertisingChannelTypeEnum.PERFORMANCE_MAX
+        )
         campaign.status = get_enum_value(client, "CampaignStatusEnum", status)
         # Enable brand guidelines for P-Max with brand assets at campaign level
         campaign.brand_guidelines_enabled = True
@@ -452,7 +487,9 @@ def google_create_pmax_campaign(
         campaign.maximize_conversions.target_cpa_micros = 0
         # EU accounts require this field
         campaign.contains_eu_political_advertising = get_enum_value(
-            client, "EuPoliticalAdvertisingStatusEnum", "DOES_NOT_CONTAIN_EU_POLITICAL_ADVERTISING"
+            client,
+            "EuPoliticalAdvertisingStatusEnum",
+            "DOES_NOT_CONTAIN_EU_POLITICAL_ADVERTISING",
         )
         if start_date:
             campaign.start_date = start_date.replace("-", "")
@@ -517,10 +554,16 @@ def google_create_pmax_campaign(
 
         for op_response in response.mutate_operation_responses:
             if op_response.HasField("campaign_budget_result"):
-                result["budget_resource_name"] = op_response.campaign_budget_result.resource_name
+                result["budget_resource_name"] = (
+                    op_response.campaign_budget_result.resource_name
+                )
             elif op_response.HasField("campaign_result"):
-                result["campaign_resource_name"] = op_response.campaign_result.resource_name
-                result["campaign_id"] = op_response.campaign_result.resource_name.split("/")[-1]
+                result["campaign_resource_name"] = (
+                    op_response.campaign_result.resource_name
+                )
+                result["campaign_id"] = op_response.campaign_result.resource_name.split(
+                    "/"
+                )[-1]
             elif op_response.HasField("asset_result"):
                 resource_name = op_response.asset_result.resource_name
                 # We can't easily distinguish which asset is which from the response,
@@ -575,7 +618,7 @@ def google_update_campaign(
     """
     try:
         client = get_google_ads_client(login_customer_id=login_customer_id)
-        customer_id = clean_customer_id(customer_id or get_default_customer_id() or "")
+        customer_id = resolve_customer_id(customer_id)
         if not customer_id:
             raise ToolError("No customer_id provided and no default configured")
 
@@ -658,7 +701,7 @@ def google_delete_campaign(
     """
     try:
         client = get_google_ads_client(login_customer_id=login_customer_id)
-        customer_id = clean_customer_id(customer_id or get_default_customer_id() or "")
+        customer_id = resolve_customer_id(customer_id)
         if not customer_id:
             raise ToolError("No customer_id provided and no default configured")
 

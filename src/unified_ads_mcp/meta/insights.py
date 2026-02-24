@@ -6,14 +6,10 @@ reports from Meta Ads campaigns, ad sets, and ads.
 
 import os
 import json
-from typing import Optional, Union, Dict, List
+from typing import Optional, Union, Dict
 
 from ..server import mcp
-from .client import (
-    make_api_request,
-    meta_api_tool,
-    ensure_account_prefix
-)
+from .client import make_api_request, meta_api_tool
 
 
 @mcp.tool()
@@ -25,7 +21,7 @@ async def meta_get_insights(
     breakdown: Optional[str] = None,
     level: str = "ad",
     limit: int = 100,
-    after: Optional[str] = None
+    after: Optional[str] = None,
 ) -> dict:
     """Get performance insights for a campaign, ad set, ad, or account.
 
@@ -93,7 +89,7 @@ async def meta_get_insights(
     params = {
         "fields": "account_id,account_name,campaign_id,campaign_name,adset_id,adset_name,ad_id,ad_name,impressions,clicks,spend,cpc,cpm,ctr,reach,frequency,actions,action_values,conversions,unique_clicks,cost_per_action_type,cost_per_conversion",
         "level": level,
-        "limit": limit
+        "limit": limit,
     }
 
     # Handle time range
@@ -104,7 +100,7 @@ async def meta_get_insights(
             return {
                 "error": {
                     "message": "Custom time_range must have 'since' and 'until' keys",
-                    "example": {"since": "2025-01-01", "until": "2025-01-31"}
+                    "example": {"since": "2025-01-01", "until": "2025-01-31"},
                 }
             }
     else:
@@ -122,9 +118,7 @@ async def meta_get_insights(
 
 @mcp.tool()
 @meta_api_tool
-async def meta_get_login_link(
-    access_token: Optional[str] = None
-) -> dict:
+async def meta_get_login_link(access_token: Optional[str] = None) -> dict:
     """Get a login link for Meta Ads authentication.
 
     Returns the OAuth authentication URL for connecting to Meta Ads.
@@ -144,7 +138,9 @@ async def meta_get_login_link(
         >>> print(f"Login at: {result['auth_url']}")
     """
     app_id = os.environ.get("META_APP_ID", "")
-    redirect_uri = os.environ.get("META_REDIRECT_URI", "https://localhost:8080/callback")
+    redirect_uri = os.environ.get(
+        "META_REDIRECT_URI", "https://localhost:8080/callback"
+    )
 
     if not app_id:
         return {
@@ -154,8 +150,8 @@ async def meta_get_login_link(
                     "1. Go to https://developers.facebook.com/apps/",
                     "2. Create or select an app",
                     "3. Copy the App ID",
-                    "4. Set META_APP_ID environment variable"
-                ]
+                    "4. Set META_APP_ID environment variable",
+                ],
             }
         }
 
@@ -165,7 +161,7 @@ async def meta_get_login_link(
         "ads_read",
         "business_management",
         "pages_read_engagement",
-        "pages_show_list"
+        "pages_show_list",
     ]
 
     auth_url = (
@@ -184,8 +180,8 @@ async def meta_get_login_link(
             "2. Log in with your Facebook account",
             "3. Grant the requested permissions",
             "4. You will be redirected with an authorization code",
-            "5. Exchange the code for an access token"
+            "5. Exchange the code for an access token",
         ],
         "scopes_requested": scopes,
-        "note": "After authentication, set META_ACCESS_TOKEN environment variable with your token"
+        "note": "After authentication, set META_ACCESS_TOKEN environment variable with your token",
     }

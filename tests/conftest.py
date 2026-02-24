@@ -71,9 +71,11 @@ def test_image_path():
     downloads_images = Path.home() / "Downloads" / "images"
     if downloads_images.exists():
         # Find most recent image
-        images = list(downloads_images.glob("*.jpg")) + \
-                 list(downloads_images.glob("*.png")) + \
-                 list(downloads_images.glob("*.jpeg"))
+        images = (
+            list(downloads_images.glob("*.jpg"))
+            + list(downloads_images.glob("*.png"))
+            + list(downloads_images.glob("*.jpeg"))
+        )
         if images:
             # Sort by modification time, newest first
             images.sort(key=lambda p: p.stat().st_mtime, reverse=True)
@@ -93,10 +95,4 @@ def test_image_path():
 @pytest.fixture(scope="session")
 def test_entities():
     """Track test entities for cleanup."""
-    return {
-        "campaigns": [],
-        "adsets": [],
-        "creatives": [],
-        "ads": [],
-        "images": []
-    }
+    return {"campaigns": [], "adsets": [], "creatives": [], "ads": [], "images": []}

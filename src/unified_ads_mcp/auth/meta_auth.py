@@ -24,7 +24,6 @@ Configuration:
 import os
 import sys
 import time
-from pathlib import Path
 from typing import Optional
 
 import requests
@@ -58,8 +57,7 @@ class MetaAdsAuth:
     ):
         """Initialize the Meta Ads auth handler."""
         self.config_path = config_path or os.environ.get(
-            "META_ADS_CREDENTIALS",
-            DEFAULT_CREDENTIALS_PATH
+            "META_ADS_CREDENTIALS", DEFAULT_CREDENTIALS_PATH
         )
         self.app_id = app_id or os.environ.get("META_APP_ID")
         self.app_secret = app_secret or os.environ.get("META_APP_SECRET")
@@ -123,7 +121,10 @@ class MetaAdsAuth:
                 config["token_expires_at"] = int(time.time()) + expires_in
                 self._save_config(config)
 
-                print(f"[Meta Ads] Token refreshed! Expires in {expires_in // 86400} days", file=sys.stderr)
+                print(
+                    f"[Meta Ads] Token refreshed! Expires in {expires_in // 86400} days",
+                    file=sys.stderr,
+                )
                 return new_token
         except Exception as e:
             print(f"[Meta Ads] Token refresh failed: {e}", file=sys.stderr)
@@ -158,7 +159,10 @@ class MetaAdsAuth:
         env_token = os.environ.get("META_ACCESS_TOKEN")
         if env_token and not force_refresh:
             if self._validate_token(env_token):
-                print("[Meta Ads] Using token from META_ACCESS_TOKEN env var", file=sys.stderr)
+                print(
+                    "[Meta Ads] Using token from META_ACCESS_TOKEN env var",
+                    file=sys.stderr,
+                )
                 self._access_token = env_token
                 return env_token
 
@@ -166,7 +170,10 @@ class MetaAdsAuth:
         system_token = config.get("system_user_token")
         if system_token and not force_refresh:
             if self._validate_token(system_token):
-                print("[Meta Ads] Using system user token (never expires)", file=sys.stderr)
+                print(
+                    "[Meta Ads] Using system user token (never expires)",
+                    file=sys.stderr,
+                )
                 self._access_token = system_token
                 return system_token
             else:
@@ -179,10 +186,16 @@ class MetaAdsAuth:
             if not force_refresh and self._validate_token(access_token):
                 # Check if we should proactively refresh (7 days before expiry)
                 token_expires_at = config.get("token_expires_at", 0)
-                if token_expires_at > 0 and int(time.time()) > (token_expires_at - TOKEN_REFRESH_BUFFER):
-                    print("[Meta Ads] Token expiring soon, refreshing...", file=sys.stderr)
+                if token_expires_at > 0 and int(time.time()) > (
+                    token_expires_at - TOKEN_REFRESH_BUFFER
+                ):
+                    print(
+                        "[Meta Ads] Token expiring soon, refreshing...", file=sys.stderr
+                    )
                     if app_secret:
-                        refreshed = self._refresh_token(access_token, app_id, app_secret)
+                        refreshed = self._refresh_token(
+                            access_token, app_id, app_secret
+                        )
                         if refreshed:
                             self._access_token = refreshed
                             return refreshed
@@ -193,7 +206,9 @@ class MetaAdsAuth:
 
             # Token invalid/expired - try to refresh if we have app_secret
             if app_secret:
-                print("[Meta Ads] Token expired, attempting refresh...", file=sys.stderr)
+                print(
+                    "[Meta Ads] Token expired, attempting refresh...", file=sys.stderr
+                )
                 refreshed = self._refresh_token(access_token, app_id, app_secret)
                 if refreshed:
                     self._access_token = refreshed
@@ -207,7 +222,7 @@ class MetaAdsAuth:
             "2. Select your app and click 'Generate Access Token'\n"
             "3. Grant permissions: ads_management, ads_read, business_management\n"
             "4. Copy the token to ~/meta-ads.yaml:\n"
-            "   access_token: \"<your-token>\"\n\n"
+            '   access_token: "<your-token>"\n\n'
             "For a never-expiring token, use a System User from Business Manager."
         )
 

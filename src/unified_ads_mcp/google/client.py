@@ -20,6 +20,7 @@ import proto
 import yaml
 
 from unified_ads_mcp.auth.google_auth import get_google_auth, GoogleAdsAuth
+from ..config import only_default_account_enabled
 
 
 # Default path for Google Ads credentials
@@ -171,7 +172,9 @@ def get_login_customer_id() -> Optional[str]:
     Returns:
         The login_customer_id if configured, None otherwise.
     """
-    credentials_path = os.environ.get("GOOGLE_ADS_CREDENTIALS", DEFAULT_CREDENTIALS_PATH)
+    credentials_path = os.environ.get(
+        "GOOGLE_ADS_CREDENTIALS", DEFAULT_CREDENTIALS_PATH
+    )
 
     if not os.path.isfile(credentials_path):
         return None
@@ -191,7 +194,9 @@ def get_default_customer_id() -> Optional[str]:
     Returns:
         The default_customer_id if configured, falls back to login_customer_id.
     """
-    credentials_path = os.environ.get("GOOGLE_ADS_CREDENTIALS", DEFAULT_CREDENTIALS_PATH)
+    credentials_path = os.environ.get(
+        "GOOGLE_ADS_CREDENTIALS", DEFAULT_CREDENTIALS_PATH
+    )
 
     if not os.path.isfile(credentials_path):
         return None
@@ -202,6 +207,16 @@ def get_default_customer_id() -> Optional[str]:
     # Try default_customer_id first, fall back to login_customer_id
     default_id = config.get("default_customer_id") or config.get("login_customer_id")
     return str(default_id).replace("-", "") if default_id else None
+
+
+def resolve_customer_id(customer_id: Optional[str]) -> str:
+    """Resolve the customer ID, enforcing ONLY_DEFAULT_ACCOUNT when enabled."""
+    default_id = get_default_customer_id()
+    if only_default_account_enabled():
+        customer_id = default_id
+    else:
+        customer_id = customer_id or default_id
+    return clean_customer_id(customer_id or "")
 
 
 def format_value(value: Any) -> Any:
@@ -234,7 +249,7 @@ def get_enum_name(client: GoogleAdsClient, enum_path: str, value: Any) -> str:
     Returns:
         The enum name as a string.
     """
-    if hasattr(value, 'name'):
+    if hasattr(value, "name"):
         return value.name
 
     # It's an integer, need to convert using protobuf EnumTypeWrapper
@@ -243,7 +258,7 @@ def get_enum_name(client: GoogleAdsClient, enum_path: str, value: Any) -> str:
         # Get the inner enum class (e.g., CampaignStatusEnum.CampaignStatus)
         inner_name = enum_path.replace("Enum", "")
         inner_enum = getattr(enum_type, inner_name, None)
-        if inner_enum and hasattr(inner_enum, 'Name'):
+        if inner_enum and hasattr(inner_enum, "Name"):
             # Protobuf enums use .Name(value) method
             return inner_enum.Name(value)
         # Fallback: just return the int as string

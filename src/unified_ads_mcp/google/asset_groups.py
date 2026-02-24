@@ -23,9 +23,8 @@ from mcp.server.fastmcp.exceptions import ToolError
 from ..server import mcp
 from .client import (
     get_google_ads_client,
-    clean_customer_id,
     format_error,
-    get_default_customer_id,
+    resolve_customer_id,
     get_enum_name,
     get_enum_value,
 )
@@ -61,7 +60,7 @@ def google_list_asset_groups(
     """
     try:
         client = get_google_ads_client(login_customer_id=login_customer_id)
-        customer_id = clean_customer_id(customer_id or get_default_customer_id() or "")
+        customer_id = resolve_customer_id(customer_id)
         if not customer_id:
             raise ToolError("No customer_id provided and no default configured")
 
@@ -86,15 +85,17 @@ def google_list_asset_groups(
         asset_groups = []
         for row in response:
             ag = row.asset_group
-            asset_groups.append({
-                "id": str(ag.id),
-                "resource_name": ag.resource_name,
-                "name": ag.name,
-                "status": get_enum_name(client, "AssetGroupStatusEnum", ag.status),
-                "final_urls": list(ag.final_urls),
-                "path1": ag.path1 if ag.path1 else None,
-                "path2": ag.path2 if ag.path2 else None,
-            })
+            asset_groups.append(
+                {
+                    "id": str(ag.id),
+                    "resource_name": ag.resource_name,
+                    "name": ag.name,
+                    "status": get_enum_name(client, "AssetGroupStatusEnum", ag.status),
+                    "final_urls": list(ag.final_urls),
+                    "path1": ag.path1 if ag.path1 else None,
+                    "path2": ag.path2 if ag.path2 else None,
+                }
+            )
 
         return asset_groups
 
@@ -135,7 +136,7 @@ def google_get_asset_group(
     """
     try:
         client = get_google_ads_client(login_customer_id=login_customer_id)
-        customer_id = clean_customer_id(customer_id or get_default_customer_id() or "")
+        customer_id = resolve_customer_id(customer_id)
         if not customer_id:
             raise ToolError("No customer_id provided and no default configured")
 
@@ -203,7 +204,9 @@ def google_get_asset_group(
             asset_data = {
                 "asset_id": str(asset.id),
                 "asset_resource_name": aga.asset,
-                "field_type": get_enum_name(client, "AssetFieldTypeEnum", aga.field_type),
+                "field_type": get_enum_name(
+                    client, "AssetFieldTypeEnum", aga.field_type
+                ),
                 "status": get_enum_name(client, "AssetLinkStatusEnum", aga.status),
                 "type": get_enum_name(client, "AssetTypeEnum", asset.type),
                 "name": asset.name if asset.name else None,
@@ -278,14 +281,14 @@ def google_create_asset_group(
 
         for i, h in enumerate(headlines):
             if len(h) > 30:
-                raise ToolError(f"Headline {i+1} exceeds 30 characters: '{h}'")
+                raise ToolError(f"Headline {i + 1} exceeds 30 characters: '{h}'")
 
         for i, d in enumerate(descriptions):
             if len(d) > 90:
-                raise ToolError(f"Description {i+1} exceeds 90 characters")
+                raise ToolError(f"Description {i + 1} exceeds 90 characters")
 
         client = get_google_ads_client(login_customer_id=login_customer_id)
-        customer_id = clean_customer_id(customer_id or get_default_customer_id() or "")
+        customer_id = resolve_customer_id(customer_id)
         if not customer_id:
             raise ToolError("No customer_id provided and no default configured")
 
@@ -323,7 +326,9 @@ def google_create_asset_group(
         for i, headline in enumerate(headlines):
             asset_op = client.get_type("MutateOperation")
             asset = asset_op.asset_operation.create
-            asset.resource_name = asset_service.asset_path(customer_id, headline_temp_ids[i])
+            asset.resource_name = asset_service.asset_path(
+                customer_id, headline_temp_ids[i]
+            )
             asset.text_asset.text = headline
             mutate_operations.append(asset_op)
 
@@ -331,7 +336,9 @@ def google_create_asset_group(
         for i, description in enumerate(descriptions):
             asset_op = client.get_type("MutateOperation")
             asset = asset_op.asset_operation.create
-            asset.resource_name = asset_service.asset_path(customer_id, description_temp_ids[i])
+            asset.resource_name = asset_service.asset_path(
+                customer_id, description_temp_ids[i]
+            )
             asset.text_asset.text = description
             mutate_operations.append(asset_op)
 
@@ -340,16 +347,19 @@ def google_create_asset_group(
         if business_name:
             bn_op = client.get_type("MutateOperation")
             bn_asset = bn_op.asset_operation.create
-            bn_asset.resource_name = asset_service.asset_path(customer_id, business_name_temp_id)
+            bn_asset.resource_name = asset_service.asset_path(
+                customer_id, business_name_temp_id
+            )
             bn_asset.text_asset.text = business_name
             mutate_operations.append(bn_op)
 
         # 5. Link headlines to asset group
-        asset_group_asset_service = client.get_service("AssetGroupAssetService")
         for temp_id in headline_temp_ids:
             link_op = client.get_type("MutateOperation")
             aga = link_op.asset_group_asset_operation.create
-            aga.asset_group = asset_group_service.asset_group_path(customer_id, asset_group_temp_id)
+            aga.asset_group = asset_group_service.asset_group_path(
+                customer_id, asset_group_temp_id
+            )
             aga.asset = asset_service.asset_path(customer_id, temp_id)
             aga.field_type = get_enum_value(client, "AssetFieldTypeEnum", "HEADLINE")
             mutate_operations.append(link_op)
@@ -358,7 +368,9 @@ def google_create_asset_group(
         for temp_id in description_temp_ids:
             link_op = client.get_type("MutateOperation")
             aga = link_op.asset_group_asset_operation.create
-            aga.asset_group = asset_group_service.asset_group_path(customer_id, asset_group_temp_id)
+            aga.asset_group = asset_group_service.asset_group_path(
+                customer_id, asset_group_temp_id
+            )
             aga.asset = asset_service.asset_path(customer_id, temp_id)
             aga.field_type = get_enum_value(client, "AssetFieldTypeEnum", "DESCRIPTION")
             mutate_operations.append(link_op)
@@ -367,9 +379,13 @@ def google_create_asset_group(
         if business_name:
             bn_link_op = client.get_type("MutateOperation")
             bn_aga = bn_link_op.asset_group_asset_operation.create
-            bn_aga.asset_group = asset_group_service.asset_group_path(customer_id, asset_group_temp_id)
+            bn_aga.asset_group = asset_group_service.asset_group_path(
+                customer_id, asset_group_temp_id
+            )
             bn_aga.asset = asset_service.asset_path(customer_id, business_name_temp_id)
-            bn_aga.field_type = get_enum_value(client, "AssetFieldTypeEnum", "BUSINESS_NAME")
+            bn_aga.field_type = get_enum_value(
+                client, "AssetFieldTypeEnum", "BUSINESS_NAME"
+            )
             mutate_operations.append(bn_link_op)
 
         # Execute atomic bulk mutate
@@ -386,7 +402,11 @@ def google_create_asset_group(
                 asset_group_resource_name = result.asset_group_result.resource_name
                 break
 
-        asset_group_id = asset_group_resource_name.split("/")[-1] if asset_group_resource_name else None
+        asset_group_id = (
+            asset_group_resource_name.split("/")[-1]
+            if asset_group_resource_name
+            else None
+        )
 
         return {
             "asset_group_id": asset_group_id,
@@ -447,7 +467,7 @@ def google_add_asset_group_asset(
     """
     try:
         client = get_google_ads_client(login_customer_id=login_customer_id)
-        customer_id = clean_customer_id(customer_id or get_default_customer_id() or "")
+        customer_id = resolve_customer_id(customer_id)
         if not customer_id:
             raise ToolError("No customer_id provided and no default configured")
 
@@ -455,14 +475,18 @@ def google_add_asset_group_asset(
         asset_group_service = client.get_service("AssetGroupService")
 
         # Get asset group resource name
-        asset_group_resource = asset_group_service.asset_group_path(customer_id, asset_group_id)
+        asset_group_resource = asset_group_service.asset_group_path(
+            customer_id, asset_group_id
+        )
 
         # Create asset group asset link
         operation = client.get_type("AssetGroupAssetOperation")
         aga = operation.create
         aga.asset_group = asset_group_resource
         aga.asset = asset_resource_name
-        aga.field_type = get_enum_value(client, "AssetFieldTypeEnum", field_type.upper())
+        aga.field_type = get_enum_value(
+            client, "AssetFieldTypeEnum", field_type.upper()
+        )
 
         response = asset_group_asset_service.mutate_asset_group_assets(
             customer_id=customer_id,
@@ -514,7 +538,7 @@ def google_update_asset_group(
     """
     try:
         client = get_google_ads_client(login_customer_id=login_customer_id)
-        customer_id = clean_customer_id(customer_id or get_default_customer_id() or "")
+        customer_id = resolve_customer_id(customer_id)
         if not customer_id:
             raise ToolError("No customer_id provided and no default configured")
 
@@ -532,7 +556,9 @@ def google_update_asset_group(
             field_mask.append("name")
 
         if status is not None:
-            asset_group.status = get_enum_value(client, "AssetGroupStatusEnum", status.upper())
+            asset_group.status = get_enum_value(
+                client, "AssetGroupStatusEnum", status.upper()
+            )
             field_mask.append("status")
 
         if final_url is not None:
@@ -596,13 +622,15 @@ def google_delete_asset_group(
     """
     try:
         client = get_google_ads_client(login_customer_id=login_customer_id)
-        customer_id = clean_customer_id(customer_id or get_default_customer_id() or "")
+        customer_id = resolve_customer_id(customer_id)
         if not customer_id:
             raise ToolError("No customer_id provided and no default configured")
 
         asset_group_service = client.get_service("AssetGroupService")
         operation = client.get_type("AssetGroupOperation")
-        operation.remove = asset_group_service.asset_group_path(customer_id, asset_group_id)
+        operation.remove = asset_group_service.asset_group_path(
+            customer_id, asset_group_id
+        )
 
         response = asset_group_service.mutate_asset_groups(
             customer_id=customer_id,
@@ -648,7 +676,7 @@ def google_remove_asset_group_asset(
     """
     try:
         client = get_google_ads_client(login_customer_id=login_customer_id)
-        customer_id = clean_customer_id(customer_id or get_default_customer_id() or "")
+        customer_id = resolve_customer_id(customer_id)
         if not customer_id:
             raise ToolError("No customer_id provided and no default configured")
 
@@ -656,7 +684,9 @@ def google_remove_asset_group_asset(
         asset_group_service = client.get_service("AssetGroupService")
 
         # Build the resource name for the asset group asset
-        asset_group_resource = asset_group_service.asset_group_path(customer_id, asset_group_id)
+        asset_group_resource = asset_group_service.asset_group_path(
+            customer_id, asset_group_id
+        )
 
         # We need to find the exact asset group asset resource name
         ga_service = client.get_service("GoogleAdsService")
@@ -676,7 +706,9 @@ def google_remove_asset_group_asset(
             break
 
         if not aga_resource_name:
-            raise ToolError(f"Asset link not found for asset {asset_resource_name} in asset group {asset_group_id}")
+            raise ToolError(
+                f"Asset link not found for asset {asset_resource_name} in asset group {asset_group_id}"
+            )
 
         operation = client.get_type("AssetGroupAssetOperation")
         operation.remove = aga_resource_name

@@ -4,18 +4,17 @@ This module provides MCP tools for managing Meta Ads creatives, including
 uploading images, creating creatives, and updating creative content.
 """
 
-import json
 import base64
 import os
 import httpx
-from typing import Optional, List, Dict, Any
+from typing import Optional
 
 from ..server import mcp
 from .client import (
     make_api_request,
     meta_api_tool,
     ensure_account_prefix,
-    get_default_account_id,
+    resolve_account_id,
 )
 
 
@@ -45,7 +44,7 @@ async def meta_upload_image(
     image_url: Optional[str] = None,
     file: Optional[str] = None,
     file_path: Optional[str] = None,
-    name: Optional[str] = None
+    name: Optional[str] = None,
 ) -> dict:
     """Upload an image to use in Meta Ads creatives.
 
@@ -82,12 +81,20 @@ async def meta_upload_image(
         >>> image_hash = result["image_hash"]
         >>> # Now use image_hash in meta_create_creative()
     """
-    account_id = account_id or get_default_account_id()
+    account_id = resolve_account_id(account_id)
     if not account_id:
-        return {"error": {"message": "account_id is required - configure default_account_id in meta-ads.yaml"}}
+        return {
+            "error": {
+                "message": "account_id is required - configure default_account_id in meta-ads.yaml or META_DEFAULT_ACCOUNT_ID"
+            }
+        }
 
     if not file and not image_url and not file_path:
-        return {"error": {"message": "Provide one of: 'file' (base64/data URL), 'image_url', or 'file_path'"}}
+        return {
+            "error": {
+                "message": "Provide one of: 'file' (base64/data URL), 'image_url', or 'file_path'"
+            }
+        }
 
     account_id = ensure_account_prefix(account_id)
 
@@ -103,8 +110,8 @@ async def meta_upload_image(
                         "message": f"File not found: {file_path}",
                         "suggestions": [
                             "Check that the file path is correct",
-                            "Ensure the file exists and is readable"
-                        ]
+                            "Ensure the file exists and is readable",
+                        ],
                     }
                 }
 
@@ -120,7 +127,7 @@ async def meta_upload_image(
                 return {
                     "error": {
                         "message": f"Failed to read file: {file_path}",
-                        "details": str(e)
+                        "details": str(e),
                     }
                 }
 
@@ -138,7 +145,7 @@ async def meta_upload_image(
                         "image/jpeg": ".jpg",
                         "image/jpg": ".jpg",
                         "image/webp": ".webp",
-                        "image/gif": ".gif"
+                        "image/gif": ".gif",
                     }
                     ext = ext_map.get(mime_type, ".png")
                     inferred_name = f"upload{ext}"
@@ -158,8 +165,8 @@ async def meta_upload_image(
                         "image_url": image_url,
                         "suggestions": [
                             "Ensure the URL is publicly accessible",
-                            "Check that the URL points directly to an image file"
-                        ]
+                            "Check that the URL points directly to an image file",
+                        ],
                     }
                 }
 
@@ -177,15 +184,16 @@ async def meta_upload_image(
         final_name = name or inferred_name or "upload.png"
 
         endpoint = f"{account_id}/adimages"
-        params = {
-            "bytes": encoded_image,
-            "name": final_name
-        }
+        params = {"bytes": encoded_image, "name": final_name}
 
         data = await make_api_request(endpoint, access_token, params, method="POST")
 
         # Normalize response
-        if isinstance(data, dict) and "images" in data and isinstance(data["images"], dict):
+        if (
+            isinstance(data, dict)
+            and "images" in data
+            and isinstance(data["images"], dict)
+        ):
             images_dict = data["images"]
             images_list = []
             for hash_key, info in images_dict.items():
@@ -194,7 +202,7 @@ async def meta_upload_image(
                     "url": info.get("url"),
                     "width": info.get("width"),
                     "height": info.get("height"),
-                    "name": info.get("name")
+                    "name": info.get("name"),
                 }
                 normalized = {k: v for k, v in normalized.items() if v is not None}
                 images_list.append(normalized)
@@ -207,7 +215,7 @@ async def meta_upload_image(
                 "account_id": account_id,
                 "name": final_name,
                 "image_hash": primary_hash,
-                "images": images_list
+                "images": images_list,
             }
 
         if isinstance(data, dict) and "error" in data:
@@ -217,16 +225,11 @@ async def meta_upload_image(
             "success": True,
             "account_id": account_id,
             "name": final_name,
-            "raw_response": data
+            "raw_response": data,
         }
 
     except Exception as e:
-        return {
-            "error": {
-                "message": "Failed to upload image",
-                "details": str(e)
-            }
-        }
+        return {"error": {"message": "Failed to upload image", "details": str(e)}}
 
 
 @mcp.tool()
@@ -242,7 +245,7 @@ async def meta_create_creative(
     headline: Optional[str] = None,
     description: Optional[str] = None,
     call_to_action_type: Optional[str] = None,
-    instagram_actor_id: Optional[str] = None
+    instagram_actor_id: Optional[str] = None,
 ) -> dict:
     """Create a new ad creative using an uploaded image.
 
@@ -298,9 +301,13 @@ async def meta_create_creative(
         ... )
         >>> creative_id = creative["creative_id"]
     """
-    account_id = account_id or get_default_account_id()
+    account_id = resolve_account_id(account_id)
     if not account_id:
-        return {"error": {"message": "account_id is required - configure default_account_id in meta-ads.yaml"}}
+        return {
+            "error": {
+                "message": "account_id is required - configure default_account_id in meta-ads.yaml or META_DEFAULT_ACCOUNT_ID"
+            }
+        }
     if not image_hash:
         return {"error": {"message": "image_hash is required"}}
     if not page_id:
@@ -322,9 +329,9 @@ async def meta_create_creative(
             "link_data": {
                 "image_hash": image_hash,
                 "link": link_url,
-                "message": message
-            }
-        }
+                "message": message,
+            },
+        },
     }
 
     if headline:
@@ -344,7 +351,9 @@ async def meta_create_creative(
     endpoint = f"{account_id}/adcreatives"
 
     try:
-        data = await make_api_request(endpoint, access_token, creative_data, method="POST")
+        data = await make_api_request(
+            endpoint, access_token, creative_data, method="POST"
+        )
 
         if "id" in data:
             creative_id = data["id"]
@@ -353,23 +362,16 @@ async def meta_create_creative(
             detail_params = {
                 "fields": "id,name,status,thumbnail_url,image_url,image_hash,object_story_spec,link_url"
             }
-            details = await make_api_request(detail_endpoint, access_token, detail_params)
+            details = await make_api_request(
+                detail_endpoint, access_token, detail_params
+            )
 
-            return {
-                "success": True,
-                "creative_id": creative_id,
-                "details": details
-            }
+            return {"success": True, "creative_id": creative_id, "details": details}
 
         return data
 
     except Exception as e:
-        return {
-            "error": {
-                "message": "Failed to create creative",
-                "details": str(e)
-            }
-        }
+        return {"error": {"message": "Failed to create creative", "details": str(e)}}
 
 
 @mcp.tool()
@@ -381,7 +383,7 @@ async def meta_update_creative(
     message: Optional[str] = None,
     headline: Optional[str] = None,
     description: Optional[str] = None,
-    call_to_action_type: Optional[str] = None
+    call_to_action_type: Optional[str] = None,
 ) -> dict:
     """Update an existing creative's content.
 
@@ -441,7 +443,9 @@ async def meta_update_creative(
     endpoint = f"{creative_id}"
 
     try:
-        data = await make_api_request(endpoint, access_token, update_data, method="POST")
+        data = await make_api_request(
+            endpoint, access_token, update_data, method="POST"
+        )
 
         if "success" in data or "id" in data:
             # Get updated details
@@ -450,11 +454,7 @@ async def meta_update_creative(
             }
             details = await make_api_request(endpoint, access_token, detail_params)
 
-            return {
-                "success": True,
-                "creative_id": creative_id,
-                "details": details
-            }
+            return {"success": True, "creative_id": creative_id, "details": details}
 
         return data
 
@@ -462,6 +462,6 @@ async def meta_update_creative(
         return {
             "error": {
                 "message": f"Failed to update creative {creative_id}",
-                "details": str(e)
+                "details": str(e),
             }
         }

@@ -21,7 +21,7 @@ Configuration:
 import os
 import sys
 import time
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Optional
 
@@ -72,8 +72,7 @@ class GoogleAdsAuth:
             ValueError: If config is missing required fields.
         """
         self.config_path = config_path or os.environ.get(
-            "GOOGLE_ADS_CREDENTIALS",
-            str(Path.home() / "google-ads.yaml")
+            "GOOGLE_ADS_CREDENTIALS", str(Path.home() / "google-ads.yaml")
         )
         self._config = self._load_config()
         self._credentials: Optional[Credentials] = None
@@ -184,9 +183,13 @@ class GoogleAdsAuth:
                     try:
                         self._credentials.refresh(Request())
                         self._save_credentials()
-                        print("[Google Ads] Token refreshed successfully", file=sys.stderr)
+                        print(
+                            "[Google Ads] Token refreshed successfully", file=sys.stderr
+                        )
                     except Exception as e:
-                        print(f"[Google Ads] Token refresh failed: {e}", file=sys.stderr)
+                        print(
+                            f"[Google Ads] Token refresh failed: {e}", file=sys.stderr
+                        )
                         # Fall through to browser auth
                         self._credentials = None
 
@@ -207,10 +210,15 @@ class GoogleAdsAuth:
                 try:
                     self._credentials.refresh(Request())
                     self._save_credentials()
-                    print("[Google Ads] Using refresh token from config", file=sys.stderr)
+                    print(
+                        "[Google Ads] Using refresh token from config", file=sys.stderr
+                    )
                     return self._credentials
                 except Exception as e:
-                    print(f"[Google Ads] Config refresh token invalid: {e}", file=sys.stderr)
+                    print(
+                        f"[Google Ads] Config refresh token invalid: {e}",
+                        file=sys.stderr,
+                    )
                     self._credentials = None
 
         # Need browser-based OAuth flow
@@ -241,20 +249,23 @@ class GoogleAdsAuth:
             "access_type": "offline",  # Required for refresh token
             "prompt": "consent",  # Force consent to get refresh token
         }
-        auth_url = GOOGLE_AUTH_URL + "?" + "&".join(
-            f"{k}={v}" for k, v in auth_params.items()
+        auth_url = (
+            GOOGLE_AUTH_URL + "?" + "&".join(f"{k}={v}" for k, v in auth_params.items())
         )
 
         print("\n" + "=" * 60, file=sys.stderr)
         print("[Google Ads] Authentication required", file=sys.stderr)
         print("=" * 60, file=sys.stderr)
-        print(f"Opening browser for authentication...", file=sys.stderr)
+        print("Opening browser for authentication...", file=sys.stderr)
         print(f"If browser doesn't open, visit:\n{auth_url}", file=sys.stderr)
         print("=" * 60 + "\n", file=sys.stderr)
 
         clear_tokens()
         if not open_auth_url(auth_url):
-            print("[Google Ads] Please open the URL above in your browser", file=sys.stderr)
+            print(
+                "[Google Ads] Please open the URL above in your browser",
+                file=sys.stderr,
+            )
 
         # Wait for callback with authorization code
         print("[Google Ads] Waiting for authentication...", file=sys.stderr)
@@ -265,7 +276,10 @@ class GoogleAdsAuth:
                 break
             time.sleep(1)
             if i > 0 and i % 30 == 0:
-                print(f"[Google Ads] Still waiting... ({timeout - i}s remaining)", file=sys.stderr)
+                print(
+                    f"[Google Ads] Still waiting... ({timeout - i}s remaining)",
+                    file=sys.stderr,
+                )
         else:
             raise TimeoutError(
                 "Google authentication timed out after 2 minutes. "

@@ -12,7 +12,7 @@ from .client import (
     make_api_request,
     meta_api_tool,
     ensure_account_prefix,
-    get_default_account_id,
+    resolve_account_id,
 )
 
 
@@ -24,7 +24,7 @@ async def meta_list_ads(
     adset_id: Optional[str] = None,
     campaign_id: Optional[str] = None,
     limit: int = 25,
-    after: Optional[str] = None
+    after: Optional[str] = None,
 ) -> dict:
     """List ads for a Meta Ads account with optional filtering.
 
@@ -50,9 +50,13 @@ async def meta_list_ads(
         >>> for ad in ads["data"]:
         ...     print(f"{ad['name']}: {ad['status']}")
     """
-    account_id = account_id or get_default_account_id()
+    account_id = resolve_account_id(account_id)
     if not account_id:
-        return {"error": {"message": "account_id is required - configure default_account_id in meta-ads.yaml"}}
+        return {
+            "error": {
+                "message": "account_id is required - configure default_account_id in meta-ads.yaml or META_DEFAULT_ACCOUNT_ID"
+            }
+        }
 
     account_id = ensure_account_prefix(account_id)
 
@@ -66,7 +70,7 @@ async def meta_list_ads(
 
     params = {
         "fields": "id,name,adset_id,campaign_id,status,effective_status,creative,created_time,updated_time,bid_amount,conversion_domain,tracking_specs",
-        "limit": limit
+        "limit": limit,
     }
 
     if after:
@@ -78,10 +82,7 @@ async def meta_list_ads(
 
 @mcp.tool()
 @meta_api_tool
-async def meta_get_ad_details(
-    ad_id: str,
-    access_token: Optional[str] = None
-) -> dict:
+async def meta_get_ad_details(ad_id: str, access_token: Optional[str] = None) -> dict:
     """Get detailed information about a specific ad.
 
     Retrieves comprehensive ad details including creative reference,
@@ -122,10 +123,7 @@ async def meta_get_ad_details(
 
 @mcp.tool()
 @meta_api_tool
-async def meta_get_ad_creatives(
-    ad_id: str,
-    access_token: Optional[str] = None
-) -> dict:
+async def meta_get_ad_creatives(ad_id: str, access_token: Optional[str] = None) -> dict:
     """Get creative details for a specific ad.
 
     Retrieves the creative content associated with an ad, including
@@ -189,7 +187,7 @@ async def meta_create_ad(
     access_token: Optional[str] = None,
     status: str = "PAUSED",
     bid_amount: Optional[int] = None,
-    tracking_specs: Optional[List[Dict[str, Any]]] = None
+    tracking_specs: Optional[List[Dict[str, Any]]] = None,
 ) -> dict:
     """Create a new ad with an existing creative.
 
@@ -226,9 +224,13 @@ async def meta_create_ad(
         ... )
         >>> print(f"Created ad: {result['id']}")
     """
-    account_id = account_id or get_default_account_id()
+    account_id = resolve_account_id(account_id)
     if not account_id:
-        return {"error": {"message": "account_id is required - configure default_account_id in meta-ads.yaml"}}
+        return {
+            "error": {
+                "message": "account_id is required - configure default_account_id in meta-ads.yaml or META_DEFAULT_ACCOUNT_ID"
+            }
+        }
     if not name:
         return {"error": {"message": "name is required"}}
     if not adset_id:
@@ -244,7 +246,7 @@ async def meta_create_ad(
         "name": name,
         "adset_id": adset_id,
         "creative": json.dumps({"creative_id": creative_id}),
-        "status": status
+        "status": status,
     }
 
     if bid_amount is not None:
@@ -257,12 +259,7 @@ async def meta_create_ad(
         data = await make_api_request(endpoint, access_token, params, method="POST")
         return data
     except Exception as e:
-        return {
-            "error": {
-                "message": "Failed to create ad",
-                "details": str(e)
-            }
-        }
+        return {"error": {"message": "Failed to create ad", "details": str(e)}}
 
 
 @mcp.tool()
@@ -274,7 +271,7 @@ async def meta_update_ad(
     status: Optional[str] = None,
     creative_id: Optional[str] = None,
     bid_amount: Optional[int] = None,
-    tracking_specs: Optional[List[Dict[str, Any]]] = None
+    tracking_specs: Optional[List[Dict[str, Any]]] = None,
 ) -> dict:
     """Update an existing ad's settings.
 
@@ -329,9 +326,4 @@ async def meta_update_ad(
         data = await make_api_request(endpoint, access_token, params, method="POST")
         return data
     except Exception as e:
-        return {
-            "error": {
-                "message": f"Failed to update ad {ad_id}",
-                "details": str(e)
-            }
-        }
+        return {"error": {"message": f"Failed to update ad {ad_id}", "details": str(e)}}

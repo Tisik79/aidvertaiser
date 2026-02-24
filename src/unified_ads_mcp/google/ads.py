@@ -10,7 +10,14 @@ from google.ads.googleads.errors import GoogleAdsException
 from mcp.server.fastmcp.exceptions import ToolError
 
 from ..server import mcp
-from .client import get_google_ads_client, clean_customer_id, format_error, get_default_customer_id, get_enum_name, get_enum_value, micros_to_currency
+from .client import (
+    get_google_ads_client,
+    format_error,
+    resolve_customer_id,
+    get_enum_name,
+    get_enum_value,
+    micros_to_currency,
+)
 
 
 @mcp.tool()
@@ -47,10 +54,9 @@ def google_list_ads(
     """
     try:
         client = get_google_ads_client(login_customer_id=login_customer_id)
-        customer_id = clean_customer_id(customer_id or get_default_customer_id() or "")
+        customer_id = resolve_customer_id(customer_id)
         if not customer_id:
             raise ToolError("No customer_id provided and no default configured")
-
 
         query = """
             SELECT
@@ -98,7 +104,9 @@ def google_list_ads(
                     "ad_group_name": row.ad_group.name,
                     "campaign_id": str(row.campaign.id),
                     "campaign_name": row.campaign.name,
-                    "status": get_enum_name(client, "AdGroupAdStatusEnum", row.ad_group_ad.status),
+                    "status": get_enum_name(
+                        client, "AdGroupAdStatusEnum", row.ad_group_ad.status
+                    ),
                     "type": ad_type,
                     "final_urls": list(row.ad_group_ad.ad.final_urls),
                     "impressions": row.metrics.impressions,
@@ -153,10 +161,9 @@ def google_get_ad(
     """
     try:
         client = get_google_ads_client(login_customer_id=login_customer_id)
-        customer_id = clean_customer_id(customer_id or get_default_customer_id() or "")
+        customer_id = resolve_customer_id(customer_id)
         if not customer_id:
             raise ToolError("No customer_id provided and no default configured")
-
 
         query = f"""
             SELECT
@@ -199,11 +206,14 @@ def google_get_ad(
                     "ad_group_name": row.ad_group.name,
                     "campaign_id": str(row.campaign.id),
                     "campaign_name": row.campaign.name,
-                    "status": get_enum_name(client, "AdGroupAdStatusEnum", row.ad_group_ad.status),
+                    "status": get_enum_name(
+                        client, "AdGroupAdStatusEnum", row.ad_group_ad.status
+                    ),
                     "type": ad_type,
                     "final_urls": list(row.ad_group_ad.ad.final_urls),
                     "final_mobile_urls": list(row.ad_group_ad.ad.final_mobile_urls),
-                    "tracking_url_template": row.ad_group_ad.ad.tracking_url_template or None,
+                    "tracking_url_template": row.ad_group_ad.ad.tracking_url_template
+                    or None,
                     "impressions": row.metrics.impressions,
                     "clicks": row.metrics.clicks,
                     "cost": micros_to_currency(row.metrics.cost_micros),
@@ -216,11 +226,25 @@ def google_get_ad(
                 if ad_type == "RESPONSIVE_SEARCH_AD":
                     rsa = row.ad_group_ad.ad.responsive_search_ad
                     ad_data["headlines"] = [
-                        {"text": h.text, "pinned_field": get_enum_name(client, "ServedAssetFieldTypeEnum", h.pinned_field) if h.pinned_field else None}
+                        {
+                            "text": h.text,
+                            "pinned_field": get_enum_name(
+                                client, "ServedAssetFieldTypeEnum", h.pinned_field
+                            )
+                            if h.pinned_field
+                            else None,
+                        }
                         for h in rsa.headlines
                     ]
                     ad_data["descriptions"] = [
-                        {"text": d.text, "pinned_field": get_enum_name(client, "ServedAssetFieldTypeEnum", d.pinned_field) if d.pinned_field else None}
+                        {
+                            "text": d.text,
+                            "pinned_field": get_enum_name(
+                                client, "ServedAssetFieldTypeEnum", d.pinned_field
+                            )
+                            if d.pinned_field
+                            else None,
+                        }
                         for d in rsa.descriptions
                     ]
                     ad_data["path1"] = rsa.path1 or None
@@ -278,7 +302,9 @@ def google_create_responsive_search_ad(
     if len(headlines) > 15:
         raise ToolError("Maximum 15 headlines allowed for Responsive Search Ads")
     if len(descriptions) < 2:
-        raise ToolError("At least 2 descriptions are required for Responsive Search Ads")
+        raise ToolError(
+            "At least 2 descriptions are required for Responsive Search Ads"
+        )
     if len(descriptions) > 4:
         raise ToolError("Maximum 4 descriptions allowed for Responsive Search Ads")
     if not final_urls:
@@ -286,10 +312,9 @@ def google_create_responsive_search_ad(
 
     try:
         client = get_google_ads_client(login_customer_id=login_customer_id)
-        customer_id = clean_customer_id(customer_id or get_default_customer_id() or "")
+        customer_id = resolve_customer_id(customer_id)
         if not customer_id:
             raise ToolError("No customer_id provided and no default configured")
-
 
         ad_group_ad_service = client.get_service("AdGroupAdService")
         ad_group_ad_operation = client.get_type("AdGroupAdOperation")
@@ -373,16 +398,17 @@ def google_update_ad(
     """
     try:
         client = get_google_ads_client(login_customer_id=login_customer_id)
-        customer_id = clean_customer_id(customer_id or get_default_customer_id() or "")
+        customer_id = resolve_customer_id(customer_id)
         if not customer_id:
             raise ToolError("No customer_id provided and no default configured")
-
 
         ad_group_ad_service = client.get_service("AdGroupAdService")
         ad_group_ad_operation = client.get_type("AdGroupAdOperation")
         ad_group_ad = ad_group_ad_operation.update
 
-        ad_group_ad.resource_name = f"customers/{customer_id}/adGroupAds/{ad_group_id}~{ad_id}"
+        ad_group_ad.resource_name = (
+            f"customers/{customer_id}/adGroupAds/{ad_group_id}~{ad_id}"
+        )
         ad_group_ad.status = get_enum_value(client, "AdGroupAdStatusEnum", status)
 
         ad_group_ad_operation.update_mask.paths.append("status")
@@ -430,14 +456,15 @@ def google_delete_ad(
     """
     try:
         client = get_google_ads_client(login_customer_id=login_customer_id)
-        customer_id = clean_customer_id(customer_id or get_default_customer_id() or "")
+        customer_id = resolve_customer_id(customer_id)
         if not customer_id:
             raise ToolError("No customer_id provided and no default configured")
 
-
         ad_group_ad_service = client.get_service("AdGroupAdService")
         ad_group_ad_operation = client.get_type("AdGroupAdOperation")
-        ad_group_ad_operation.remove = f"customers/{customer_id}/adGroupAds/{ad_group_id}~{ad_id}"
+        ad_group_ad_operation.remove = (
+            f"customers/{customer_id}/adGroupAds/{ad_group_id}~{ad_id}"
+        )
 
         response = ad_group_ad_service.mutate_ad_group_ads(
             customer_id=customer_id,
