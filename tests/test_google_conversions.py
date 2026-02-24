@@ -3,6 +3,8 @@
 Integration tests using real API credentials.
 """
 
+import time
+
 import pytest
 
 from unified_ads_mcp.google.conversions import (
@@ -63,9 +65,12 @@ class TestGoogleConversionActions:
 
     def test_create_update_delete_conversion_action(self):
         """Full lifecycle: create, update, delete a conversion action."""
+        # Use timestamp to ensure unique names across test runs
+        ts = int(time.time())
+
         # Create
         result = create_conversion_action(
-            name="MCP Test Conversion - DELETE ME",
+            name=f"MCP Test Conversion {ts} - DELETE ME",
             type="WEBPAGE",
             category="SUBMIT_LEAD_FORM",
             counting_type="ONE_PER_CLICK",
@@ -79,7 +84,7 @@ class TestGoogleConversionActions:
         # Update
         update_result = update_conversion_action(
             conversion_action_id=action_id,
-            name="MCP Test Conversion UPDATED - DELETE ME",
+            name=f"MCP Test Conversion {ts} UPDATED - DELETE ME",
             default_value=200.0,
         )
         assert update_result["status"] == "updated"
