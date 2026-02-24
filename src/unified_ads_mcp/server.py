@@ -69,6 +69,7 @@ from .google import keywords as google_keywords  # noqa: E402, F401
 from .google import conversions as google_conversions  # noqa: E402, F401
 from .meta import campaigns as meta_campaigns  # noqa: E402, F401
 from .meta import insights as meta_insights  # noqa: E402, F401
+from .meta import conversions as meta_conversions  # noqa: E402, F401
 
 
 def main():
