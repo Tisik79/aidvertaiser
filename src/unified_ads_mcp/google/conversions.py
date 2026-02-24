@@ -42,7 +42,7 @@ def google_list_conversion_actions(
             - id: Conversion action ID
             - name: Conversion action name
             - type: Type (WEBPAGE, PHONE_CALL, UPLOAD, etc.)
-            - category: Category (PURCHASE, LEAD, SIGNUP, etc.)
+            - category: Category (PURCHASE, SUBMIT_LEAD_FORM, SIGNUP, etc.)
             - status: Status (ENABLED, REMOVED, HIDDEN)
             - counting_type: ONE_PER_CLICK or MANY_PER_CLICK
             - attribution_model: Attribution model type
@@ -295,10 +295,10 @@ def google_create_conversion_action(
             - UPLOAD_CALLS: Imported phone call conversion
         category: Conversion category. Options:
             - DEFAULT, PURCHASE, ADD_TO_CART, BEGIN_CHECKOUT,
-              LEAD, SIGNUP, SUBSCRIBE_PAID, PAGE_VIEW,
+              SIGNUP, SUBSCRIBE_PAID, PAGE_VIEW,
               CONTACT, SUBMIT_LEAD_FORM, BOOK_APPOINTMENT,
               REQUEST_QUOTE, GET_DIRECTIONS, DOWNLOAD,
-              QUALIFIED_LEAD, CONVERTED_LEAD
+              QUALIFIED_LEAD, CONVERTED_LEAD, IMPORTED_LEAD
         customer_id: Google Ads customer ID.
             Uses default from config if not provided.
         counting_type: How to count conversions:
@@ -374,8 +374,8 @@ def google_create_conversion_action(
             client, "AttributionModelEnum", attribution_model
         )
 
-        # Include in conversions metric
-        conversion_action.include_in_conversions_metric = include_in_conversions
+        # Note: include_in_conversions_metric is immutable during creation.
+        # Use google_update_conversion_action after creation to change it.
 
         response = conversion_action_service.mutate_conversion_actions(
             customer_id=customer_id,
@@ -588,7 +588,7 @@ def google_get_conversion_action_performance(
 
     Returns:
         list[dict]: Performance by conversion action with:
-            - conversion_action_id, name, type, category
+            - conversion_action_id, name, category
             - all_conversions, all_conversions_value
             - conversions, conversions_value
             - view_through_conversions
@@ -604,22 +604,20 @@ def google_get_conversion_action_performance(
 
         query = f"""
             SELECT
-                conversion_action.id,
-                conversion_action.name,
-                conversion_action.type,
-                conversion_action.category,
-                conversion_action.status,
+                segments.conversion_action,
+                segments.conversion_action_name,
+                segments.conversion_action_category,
                 metrics.all_conversions,
                 metrics.all_conversions_value,
                 metrics.conversions,
                 metrics.conversions_value,
                 metrics.view_through_conversions
-            FROM conversion_action
+            FROM customer
             WHERE segments.date DURING {date_range}
         """
 
         if conversion_action_id:
-            query += f" AND conversion_action.id = {conversion_action_id}"
+            query += f" AND segments.conversion_action ~ 'conversionActions/{conversion_action_id}'"
 
         query += " ORDER BY metrics.all_conversions DESC"
 
@@ -632,24 +630,18 @@ def google_get_conversion_action_performance(
         results = []
         for batch in response:
             for row in batch.results:
+                # Extract conversion action ID from resource name
+                # Format: customers/123/conversionActions/456
+                ca_resource = row.segments.conversion_action
+                ca_id = ca_resource.rsplit("/", 1)[-1] if ca_resource else ""
                 results.append(
                     {
-                        "conversion_action_id": str(row.conversion_action.id),
-                        "name": row.conversion_action.name,
-                        "type": get_enum_name(
-                            client,
-                            "ConversionActionTypeEnum",
-                            row.conversion_action.type_,
-                        ),
+                        "conversion_action_id": ca_id,
+                        "name": row.segments.conversion_action_name,
                         "category": get_enum_name(
                             client,
                             "ConversionActionCategoryEnum",
-                            row.conversion_action.category,
-                        ),
-                        "status": get_enum_name(
-                            client,
-                            "ConversionActionStatusEnum",
-                            row.conversion_action.status,
+                            row.segments.conversion_action_category,
                         ),
                         "all_conversions": row.metrics.all_conversions,
                         "all_conversions_value": row.metrics.all_conversions_value,
