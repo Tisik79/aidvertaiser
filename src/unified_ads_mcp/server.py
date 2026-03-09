@@ -17,11 +17,13 @@ from fastmcp import FastMCP
 mcp = FastMCP(
     name="Unified Ads MCP",
     instructions="""
-    Unified MCP server for Google Ads and Meta Ads management.
+    Unified MCP server for Google Ads, Meta Ads, Google Analytics, and Matomo management.
 
     TOOL NAMING CONVENTION:
     - Google Ads tools are prefixed with 'google_'
     - Meta Ads tools are prefixed with 'meta_'
+    - Google Analytics tools are prefixed with 'ga4_'
+    - Matomo Analytics tools are prefixed with 'matomo_'
 
     AUTHENTICATION:
     Authentication happens automatically via browser when needed.
@@ -34,6 +36,24 @@ mcp = FastMCP(
     - When default_customer_id is set, DO NOT list accounts - just use the tools directly
     - Set ONLY_DEFAULT_ACCOUNT=1 to force using the default account and disable account listing tools
     - Use google_run_query for any GAQL queries
+
+    GOOGLE ANALYTICS:
+    - Configure via GOOGLE_ANALYTICS_CREDENTIALS env var or ~/google-analytics.yaml
+    - Falls back to ~/google-ads.yaml for client_id/client_secret if no analytics config
+    - Requires client_id, client_secret in config (same Google Cloud project as Ads)
+    - Set default_property_id in config to avoid specifying property_id on every call
+    - Use ga4_run_report for standard analytics reports
+    - Use ga4_run_realtime_report for live data
+    - Use ga4_get_metadata to discover available dimensions and metrics
+
+    MATOMO ANALYTICS:
+    - Configure via MATOMO_CREDENTIALS env var or ~/matomo.yaml
+    - Requires url (Matomo instance URL) and token_auth (API token) in config
+    - Set default_site_id in config to avoid specifying site_id on every call
+    - Supports multiple Matomo instances by changing the config
+    - Use matomo_get_visits_summary for basic visit metrics
+    - Use matomo_get_live_counters for real-time active visitors
+    - Use matomo_list_goals to see configured conversions
 
     META ADS:
     - Configure via META_APP_ID and META_APP_SECRET env vars
@@ -70,6 +90,15 @@ from .google import conversions as google_conversions  # noqa: E402, F401
 from .meta import campaigns as meta_campaigns  # noqa: E402, F401
 from .meta import insights as meta_insights  # noqa: E402, F401
 from .meta import conversions as meta_conversions  # noqa: E402, F401
+from .analytics import accounts as ga4_accounts  # noqa: E402, F401
+from .analytics import properties as ga4_properties  # noqa: E402, F401
+from .analytics import data_streams as ga4_data_streams  # noqa: E402, F401
+from .analytics import reporting as ga4_reporting  # noqa: E402, F401
+from .analytics import key_events as ga4_key_events  # noqa: E402, F401
+from .matomo import sites as matomo_sites  # noqa: E402, F401
+from .matomo import reporting as matomo_reporting  # noqa: E402, F401
+from .matomo import goals as matomo_goals  # noqa: E402, F401
+from .matomo import live as matomo_live  # noqa: E402, F401
 
 
 def main():
