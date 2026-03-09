@@ -174,3 +174,29 @@ def matomo_get_site_urls(site_id: Optional[int] = None) -> list[str]:
         )
     except Exception as e:
         raise ToolError(str(e)) from e
+
+
+@mcp.tool()
+def matomo_get_tracking_code(site_id: Optional[int] = None) -> dict[str, Any]:
+    """Gets the JavaScript tracking code for a Matomo site.
+
+    Use this after creating a site to get the code snippet that needs to be
+    added to the website's HTML (before </head> or before </body>).
+
+    Args:
+        site_id: The site ID. Uses default from config if not provided.
+
+    Returns:
+        dict: Tracking code with:
+            - site_id: The site ID
+            - javascript_tag: Full HTML/JS snippet ready to paste into the website
+    """
+    try:
+        site_id = resolve_site_id(site_id)
+        result = matomo_request(
+            "SitesManager.getJavascriptTag", {"idSite": site_id}
+        )
+        tag = result.get("value") if isinstance(result, dict) else result
+        return {"site_id": site_id, "javascript_tag": tag}
+    except Exception as e:
+        raise ToolError(str(e)) from e

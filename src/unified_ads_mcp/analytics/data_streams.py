@@ -320,3 +320,74 @@ def ga4_delete_data_stream(
         return {"status": "deleted", "name": stream_name}
     except GoogleAPICallError as e:
         raise ToolError(f"Failed to delete data stream: {e}") from e
+
+
+@mcp.tool()
+def ga4_get_tracking_code(
+    property_id: Optional[str] = None,
+    stream_name: Optional[str] = None,
+) -> dict[str, Any]:
+    """Gets the Google Analytics tracking code (gtag.js) for a web data stream.
+
+    Either provide a specific stream_name, or provide a property_id to
+    automatically find the first web data stream and return its tracking code.
+
+    Use this after creating a property and web data stream to get the
+    code snippet to add to the website's HTML <head>.
+
+    Args:
+        property_id: The GA4 property ID. Uses default from config if not provided.
+            Used to auto-discover web streams if stream_name is not given.
+        stream_name: Optional full resource name of a specific data stream
+            (e.g. "properties/123456/dataStreams/789").
+
+    Returns:
+        dict: Tracking info with:
+            - measurement_id: The measurement ID (e.g. "G-XXXXXXX")
+            - property_id: The GA4 property ID
+            - stream_name: Full resource name of the data stream
+            - tracking_code: Full HTML/JS snippet ready to paste into <head>
+    """
+    try:
+        if stream_name:
+            client = get_admin_client()
+            stream = client.get_data_stream(name=stream_name)
+        else:
+            property_id = resolve_property_id(property_id)
+            client = get_admin_client()
+            streams = client.list_data_streams(
+                parent=format_property_name(property_id),
+            )
+            stream = None
+            for s in streams:
+                if s.type_ == DataStream.DataStreamType.WEB_DATA_STREAM:
+                    stream = s
+                    break
+            if stream is None:
+                raise ToolError(
+                    "No web data stream found for this property. "
+                    "Create one first with ga4_create_web_data_stream."
+                )
+
+        measurement_id = stream.web_stream_data.measurement_id
+        prop_id = stream.name.split("/")[1] if "/" in stream.name else property_id
+
+        tracking_code = f"""<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id={measurement_id}"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){{dataLayer.push(arguments);}}
+  gtag('js', new Date());
+  gtag('config', '{measurement_id}');
+</script>"""
+
+        return {
+            "measurement_id": measurement_id,
+            "property_id": prop_id,
+            "stream_name": stream.name,
+            "tracking_code": tracking_code,
+        }
+    except ToolError:
+        raise
+    except GoogleAPICallError as e:
+        raise ToolError(f"Failed to get tracking code: {e}") from e
