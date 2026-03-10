@@ -23,7 +23,9 @@ mcp = FastMCP(
     - Google Ads tools are prefixed with 'google_'
     - Meta Ads tools are prefixed with 'meta_'
     - Google Analytics tools are prefixed with 'ga4_'
+    - Google Search Console tools are prefixed with 'gsc_'
     - Matomo Analytics tools are prefixed with 'matomo_'
+    - Bing Webmaster Tools are prefixed with 'bing_'
 
     AUTHENTICATION:
     Authentication happens automatically via browser when needed.
@@ -71,6 +73,27 @@ mcp = FastMCP(
     If ONLY_DEFAULT_ACCOUNT is set, account listing tools are disabled and all tools
     will use the configured default account ID.
 
+    BING WEBMASTER TOOLS:
+    - Configure via BING_WEBMASTER_CREDENTIALS env var or ~/bing-webmaster.yaml
+    - Requires api_key in config (get from Bing Webmaster Tools > Settings > API Access)
+    - Set default_site_url in config to avoid specifying site_url on every call
+    - No OAuth needed - simple API key authentication
+    - Use bing_list_sites to see all registered sites
+    - Use bing_get_rank_and_traffic_stats for overall search performance
+    - Use bing_get_query_stats / bing_get_page_stats for query/page breakdowns
+    - Use bing_list_sitemaps / bing_submit_sitemap for sitemap management
+    - Use bing_submit_url / bing_submit_url_batch for URL indexing requests
+
+    GOOGLE SEARCH CONSOLE:
+    - Authenticates via browser OAuth (same Google Cloud project as Ads/GA4)
+    - Falls back to ~/google-ads.yaml for client_id/client_secret
+    - Tokens cached at ~/.unified-ads-mcp/google_searchconsole_token.json
+    - Use gsc_list_sites to see all registered sites
+    - Use gsc_search_analytics for search traffic data (queries, pages, clicks, impressions)
+    - Use gsc_search_analytics_by_query / gsc_search_analytics_by_page for quick lookups
+    - Use gsc_inspect_url to check indexing status of a specific URL
+    - Use gsc_submit_sitemap to register sitemaps
+
     COMMON WORKFLOWS:
     1. Use tools directly (they use default account if configured)
     2. List campaigns with optional status filter
@@ -95,10 +118,22 @@ from .analytics import properties as ga4_properties  # noqa: E402, F401
 from .analytics import data_streams as ga4_data_streams  # noqa: E402, F401
 from .analytics import reporting as ga4_reporting  # noqa: E402, F401
 from .analytics import key_events as ga4_key_events  # noqa: E402, F401
+from .searchconsole import sites as gsc_sites  # noqa: E402, F401
+from .searchconsole import analytics as gsc_analytics  # noqa: E402, F401
+from .searchconsole import sitemaps as gsc_sitemaps  # noqa: E402, F401
+from .searchconsole import inspection as gsc_inspection  # noqa: E402, F401
+from .searchconsole import verification as gsc_verification  # noqa: E402, F401
 from .matomo import sites as matomo_sites  # noqa: E402, F401
 from .matomo import reporting as matomo_reporting  # noqa: E402, F401
 from .matomo import goals as matomo_goals  # noqa: E402, F401
 from .matomo import live as matomo_live  # noqa: E402, F401
+from .bing import sites as bing_sites  # noqa: E402, F401
+from .bing import submissions as bing_submissions  # noqa: E402, F401
+from .bing import sitemaps as bing_sitemaps  # noqa: E402, F401
+from .bing import analytics as bing_analytics  # noqa: E402, F401
+from .bing import crawl as bing_crawl  # noqa: E402, F401
+from .bing import keywords as bing_keywords  # noqa: E402, F401
+from .bing import links as bing_links  # noqa: E402, F401
 
 
 def main():
