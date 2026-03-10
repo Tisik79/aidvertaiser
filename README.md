@@ -112,68 +112,268 @@ Add to `~/.claude/mcp_servers.json`:
 
 ## Available Tools
 
-### Google Ads (`google_`)
+### Google Ads (`google_`) — 44 tools
 
-- `google_list_campaigns` - List campaigns with metrics
-- `google_create_campaign` / `google_update_campaign` / `google_delete_campaign`
-- `google_list_ad_groups` / `google_create_ad_group` / `google_update_ad_group`
-- `google_list_ads` / `google_create_responsive_search_ad` / `google_update_ad`
-- `google_list_keywords` / `google_add_keywords` / `google_update_keyword`
-- `google_list_conversion_actions` / `google_create_conversion_action`
+**Accounts & Reporting:**
+- `google_list_accounts` - List accessible Google Ads accounts
+- `google_get_account_summary` - Get account overview with metrics
 - `google_run_query` - Execute GAQL queries
-- `google_get_campaign_performance` / `google_get_ad_performance`
-- Performance Max: `google_create_pmax_campaign`, `google_list_asset_groups`
 
-### Meta Ads (`meta_`)
+**Campaigns:**
+- `google_list_campaigns` - List campaigns with optional status filter
+- `google_get_campaign` - Get single campaign details
+- `google_create_campaign` - Create a new campaign
+- `google_update_campaign` - Update campaign settings
+- `google_delete_campaign` - Remove a campaign
+- `google_get_campaign_performance` - Campaign performance metrics
+- `google_set_campaign_conversion_goal` - Set conversion goals for a campaign
+- `google_create_pmax_campaign` - Create Performance Max campaign
 
-- `meta_list_campaigns` / `meta_create_campaign` / `meta_update_campaign`
-- `meta_list_adsets` / `meta_create_adset` / `meta_update_adset`
-- `meta_list_ads` / `meta_create_ad` / `meta_update_ad`
-- `meta_get_insights` - Performance reports
-- `meta_list_pixels` / `meta_create_pixel` - Tracking pixels
-- `meta_search_interests` / `meta_search_behaviors` - Audience targeting
-- `meta_send_conversion_event` / `meta_send_conversion_events_batch`
+**Ad Groups:**
+- `google_list_ad_groups` - List ad groups in a campaign
+- `google_get_ad_group` - Get single ad group details
+- `google_create_ad_group` - Create a new ad group
+- `google_update_ad_group` - Update ad group settings
+- `google_delete_ad_group` - Remove an ad group
 
-### Google Analytics (`ga4_`)
+**Ads:**
+- `google_list_ads` - List ads in an ad group
+- `google_get_ad` - Get single ad details
+- `google_create_responsive_search_ad` - Create responsive search ad
+- `google_update_ad` - Update ad content
+- `google_delete_ad` - Remove an ad
+- `google_get_ad_performance` - Ad performance metrics
 
-- `ga4_list_accounts` / `ga4_list_properties`
-- `ga4_run_report` - Standard analytics reports
-- `ga4_run_realtime_report` - Live data
+**Keywords:**
+- `google_list_keywords` - List keywords in an ad group
+- `google_get_keyword` - Get single keyword details
+- `google_add_keywords` - Add keywords to an ad group
+- `google_update_keyword` - Update keyword bid/status
+- `google_remove_keyword` - Remove a keyword
+- `google_get_keyword_performance` - Keyword performance metrics
+- `google_get_search_terms_report` - Search terms triggering ads
+- `google_add_negative_keywords` - Add negative keywords to ad group
+- `google_list_negative_keywords` - List negative keywords in ad group
+- `google_remove_negative_keyword` - Remove a negative keyword
+- `google_add_campaign_negative_keywords` - Add campaign-level negative keywords
+- `google_list_campaign_negative_keywords` - List campaign negative keywords
+- `google_remove_campaign_negative_keyword` - Remove campaign negative keyword
+
+**Conversions:**
+- `google_list_conversion_actions` - List conversion actions
+- `google_get_conversion_action` - Get conversion action details
+- `google_create_conversion_action` - Create conversion action
+- `google_update_conversion_action` - Update conversion action
+- `google_delete_conversion_action` - Remove conversion action
+- `google_get_conversion_action_performance` - Conversion performance
+- `google_upload_offline_conversions` - Upload offline conversion data
+- `google_upload_enhanced_conversions` - Upload enhanced conversions
+
+**Assets & Performance Max:**
+- `google_list_assets` - List account assets
+- `google_create_text_asset` - Create a text asset
+- `google_create_text_assets_batch` - Create multiple text assets
+- `google_create_image_asset` - Create an image asset
+- `google_link_asset_to_campaign` - Link asset to campaign
+- `google_list_asset_groups` - List PMax asset groups
+- `google_get_asset_group` - Get asset group details
+- `google_create_asset_group` - Create PMax asset group
+- `google_update_asset_group` - Update asset group
+- `google_delete_asset_group` - Remove asset group
+- `google_add_asset_group_asset` - Add asset to asset group
+- `google_remove_asset_group_asset` - Remove asset from group
+- `google_get_asset_automation_settings` - Get auto-asset settings
+- `google_update_asset_automation_settings` - Update auto-asset settings
+- `google_list_auto_created_assets` - List auto-created assets
+- `google_remove_auto_created_asset` - Remove auto-created asset
+
+### Meta Ads (`meta_`) — 38 tools
+
+**Accounts:**
+- `meta_list_accounts` - List accessible ad accounts
+- `meta_get_account_info` - Get account details
+- `meta_get_login_link` - Get OAuth login URL
+
+**Campaigns:**
+- `meta_list_campaigns` - List campaigns
+- `meta_get_campaign_details` - Get campaign details
+- `meta_create_campaign` - Create a new campaign
+- `meta_update_campaign` - Update campaign settings
+
+**Ad Sets:**
+- `meta_list_adsets` - List ad sets
+- `meta_get_adset_details` - Get ad set details
+- `meta_create_adset` - Create a new ad set
+- `meta_update_adset` - Update ad set settings
+
+**Ads & Creatives:**
+- `meta_list_ads` - List ads
+- `meta_get_ad_details` - Get ad details
+- `meta_create_ad` - Create a new ad
+- `meta_update_ad` - Update ad settings
+- `meta_get_ad_creatives` - Get ad creative details
+- `meta_create_creative` - Create ad creative
+- `meta_update_creative` - Update ad creative
+- `meta_upload_image` - Upload image for ads
+
+**Insights & Reporting:**
+- `meta_get_insights` - Get performance reports
+
+**Targeting:**
+- `meta_search_interests` - Search interest targeting options
+- `meta_get_interest_suggestions` - Get interest suggestions
+- `meta_search_behaviors` - Search behavior targeting
+- `meta_search_geo_locations` - Search geographic locations
+- `meta_estimate_audience_size` - Estimate audience size
+
+**Tracking Pixels:**
+- `meta_list_pixels` - List tracking pixels
+- `meta_get_pixel` - Get pixel details
+- `meta_create_pixel` - Create a tracking pixel
+- `meta_update_pixel` - Update pixel settings
+- `meta_get_pixel_stats` - Get pixel event statistics
+
+**Conversions:**
+- `meta_send_conversion_event` - Send a conversion event
+- `meta_send_conversion_events_batch` - Send batch conversion events
+- `meta_list_custom_conversions` - List custom conversions
+- `meta_get_custom_conversion` - Get custom conversion details
+- `meta_create_custom_conversion` - Create custom conversion
+- `meta_update_custom_conversion` - Update custom conversion
+- `meta_delete_custom_conversion` - Delete custom conversion
+- `meta_list_offline_conversion_sets` - List offline conversion sets
+- `meta_create_offline_conversion_set` - Create offline conversion set
+- `meta_upload_offline_conversions` - Upload offline conversions
+
+### Google Analytics (`ga4_`) — 21 tools
+
+**Accounts & Properties:**
+- `ga4_list_accounts` - List GA4 accounts
+- `ga4_list_account_summaries` - List account summaries
+- `ga4_list_properties` - List properties in an account
+- `ga4_get_property` - Get property details
+- `ga4_create_property` - Create a new property
+- `ga4_update_property` - Update property settings
+- `ga4_delete_property` - Remove a property
+
+**Data Streams:**
+- `ga4_list_data_streams` - List data streams for a property
+- `ga4_get_data_stream` - Get data stream details
+- `ga4_create_web_data_stream` - Create web data stream
+- `ga4_create_android_data_stream` - Create Android data stream
+- `ga4_create_ios_data_stream` - Create iOS data stream
+- `ga4_update_data_stream` - Update data stream settings
+- `ga4_delete_data_stream` - Remove a data stream
+- `ga4_get_tracking_code` - Get tracking code snippet
+
+**Reporting:**
+- `ga4_run_report` - Run standard analytics report
+- `ga4_run_realtime_report` - Run real-time analytics report
 - `ga4_get_metadata` - Discover available dimensions and metrics
-- `ga4_list_data_streams` / `ga4_create_web_data_stream`
-- `ga4_get_tracking_code` - Get tracking snippet
-- `ga4_list_key_events` / `ga4_create_key_event`
 
-### Google Search Console (`gsc_`)
+**Key Events:**
+- `ga4_list_key_events` - List key events (conversions)
+- `ga4_create_key_event` - Create a key event
+- `ga4_update_key_event` - Update key event settings
+- `ga4_delete_key_event` - Remove a key event
 
-- `gsc_list_sites` / `gsc_add_site` / `gsc_delete_site`
+### Google Search Console (`gsc_`) — 14 tools
+
+**Sites:**
+- `gsc_list_sites` - List all registered sites
+- `gsc_get_site` - Get site details
+- `gsc_add_site` - Register a new site
+- `gsc_delete_site` - Remove a site
+
+**Search Analytics:**
 - `gsc_search_analytics` - Full search traffic data (clicks, impressions, CTR, position)
-- `gsc_search_analytics_by_query` / `gsc_search_analytics_by_page` - Quick lookups
+- `gsc_search_analytics_by_query` - Top search queries (shortcut)
+- `gsc_search_analytics_by_page` - Top pages by performance (shortcut)
+
+**URL Inspection:**
 - `gsc_inspect_url` - Check indexing status of a URL
-- `gsc_list_sitemaps` / `gsc_submit_sitemap` / `gsc_delete_sitemap`
 
-### Matomo Analytics (`matomo_`)
+**Sitemaps:**
+- `gsc_list_sitemaps` - List submitted sitemaps
+- `gsc_get_sitemap` - Get sitemap details
+- `gsc_submit_sitemap` - Submit a sitemap
+- `gsc_delete_sitemap` - Remove a sitemap
 
-- `matomo_list_sites` / `matomo_add_site` / `matomo_update_site`
+**Verification:**
+- `gsc_get_verification_token` - Get site verification token
+- `gsc_verify_site` - Verify site ownership
+- `gsc_list_verified_sites` - List all verified sites
+
+### Matomo Analytics (`matomo_`) — 21 tools
+
+**Sites:**
+- `matomo_list_sites` - List all tracked websites
+- `matomo_get_site` - Get site details
+- `matomo_add_site` - Add a new website
+- `matomo_update_site` - Update site settings
+- `matomo_delete_site` - Remove a site
+- `matomo_get_site_urls` - Get URLs for a site
+- `matomo_get_tracking_code` - Get tracking code snippet
+
+**Reporting:**
 - `matomo_get_visits_summary` - Basic visit metrics
+- `matomo_get_page_urls` - Page URL performance
+- `matomo_get_entry_pages` - Top entry pages
+- `matomo_get_exit_pages` - Top exit pages
+- `matomo_get_referrers` - Referrer sources
+- `matomo_get_referrer_types` - Referrer type breakdown
+- `matomo_get_search_keywords` - Internal search keywords
+- `matomo_get_countries` - Visitor countries
+- `matomo_get_devices` - Visitor devices
+
+**Live:**
 - `matomo_get_live_counters` - Real-time active visitors
-- `matomo_get_page_urls` / `matomo_get_entry_pages` / `matomo_get_exit_pages`
-- `matomo_get_referrers` / `matomo_get_countries` / `matomo_get_devices`
-- `matomo_list_goals` / `matomo_add_goal` - Conversion tracking
-- `matomo_get_tracking_code` - Get tracking snippet
+- `matomo_get_last_visits` - Recent visit details
+- `matomo_get_visitor_profile` - Individual visitor profile
 
-### Bing Webmaster Tools (`bing_`)
+**Goals:**
+- `matomo_list_goals` - List configured goals
+- `matomo_add_goal` - Create a new goal
+- `matomo_update_goal` - Update goal settings
+- `matomo_delete_goal` - Remove a goal
+- `matomo_get_goal_report` - Goal conversion report
 
-- `bing_list_sites` / `bing_add_site` / `bing_verify_site` / `bing_remove_site`
-- `bing_submit_url` / `bing_submit_url_batch` - Submit URLs for indexing
+### Bing Webmaster Tools (`bing_`) — 21 tools
+
+**Sites:**
+- `bing_list_sites` - List all registered sites
+- `bing_add_site` - Register a new site
+- `bing_verify_site` - Verify site ownership
+- `bing_remove_site` - Remove a site
+
+**URL Submission:**
+- `bing_submit_url` - Submit a URL for crawling/indexing
+- `bing_submit_url_batch` - Batch submit up to 500 URLs
 - `bing_get_url_submission_quota` - Check daily submission quota
-- `bing_list_sitemaps` / `bing_submit_sitemap` / `bing_remove_sitemap`
+
+**Sitemaps:**
+- `bing_list_sitemaps` - List submitted sitemaps
+- `bing_submit_sitemap` - Submit a sitemap
+- `bing_remove_sitemap` - Remove a sitemap
+
+**Search Analytics:**
 - `bing_get_rank_and_traffic_stats` - Overall search performance
-- `bing_get_query_stats` / `bing_get_page_stats` - Query/page breakdowns
-- `bing_get_crawl_stats` / `bing_get_crawl_issues` - Crawl health
-- `bing_get_crawl_settings` / `bing_save_crawl_settings` - Crawl rate control
-- `bing_get_keyword` / `bing_get_related_keywords` - Keyword research (Bing-wide)
-- `bing_get_link_counts` / `bing_get_url_links` - Backlink analysis
+- `bing_get_query_stats` - Per-query search metrics
+- `bing_get_page_stats` - Per-page search metrics
+
+**Crawl Management:**
+- `bing_get_crawl_stats` - Crawl activity statistics
+- `bing_get_crawl_issues` - Crawl errors found by Bingbot
+- `bing_get_crawl_settings` - Current crawl rate settings
+- `bing_save_crawl_settings` - Update crawl rate (1-10)
+
+**Keyword Research:**
+- `bing_get_keyword` - Search volume for a keyword (Bing-wide)
+- `bing_get_related_keywords` - Related keyword suggestions (Bing-wide)
+
+**Link Analysis:**
+- `bing_get_link_counts` - Total inbound link counts
+- `bing_get_url_links` - Detailed inbound link list
 
 ## Authentication Flow
 

@@ -92,10 +92,10 @@ def bing_request(
     """Make a Bing Webmaster Tools API request.
 
     Args:
-        method: API method name (e.g., "GetSites", "GetUrlTrafficInfo").
+        method: API method name (e.g., "GetUserSites", "GetRankAndTrafficStats").
         params: Query parameters (used for GET requests).
-        body: JSON body (used for POST/PUT/DELETE requests).
-        http_method: HTTP method - GET, POST, PUT, or DELETE.
+        body: JSON body (used for POST requests).
+        http_method: HTTP method - GET or POST (Bing JSON API uses POST for all writes).
 
     Returns:
         Parsed and unwrapped JSON response.

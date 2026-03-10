@@ -1,13 +1,18 @@
 """Unified Ads MCP Server.
 
-This module sets up the FastMCP server that provides unified access to both
-Google Ads and Meta Ads platforms.
+This module sets up the FastMCP server that provides unified access to
+Google Ads, Meta Ads, Google Analytics (GA4), Google Search Console,
+Matomo Analytics, and Bing Webmaster Tools.
 
 The server exposes tools with platform-specific prefixes:
     - google_* : Google Ads operations
     - meta_*   : Meta Ads operations
+    - ga4_*    : Google Analytics operations
+    - gsc_*    : Google Search Console operations
+    - matomo_* : Matomo Analytics operations
+    - bing_*   : Bing Webmaster Tools operations
 
-Authentication is handled automatically via browser-based OAuth when needed.
+Authentication is handled via browser OAuth (Google, Meta) or API keys (Matomo, Bing).
 """
 
 import sys
@@ -17,7 +22,7 @@ from fastmcp import FastMCP
 mcp = FastMCP(
     name="Unified Ads MCP",
     instructions="""
-    Unified MCP server for Google Ads, Meta Ads, Google Analytics, and Matomo management.
+    Unified MCP server for Google Ads, Meta Ads, Google Analytics, Google Search Console, Matomo Analytics, and Bing Webmaster Tools.
 
     TOOL NAMING CONVENTION:
     - Google Ads tools are prefixed with 'google_'

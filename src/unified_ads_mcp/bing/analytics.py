@@ -104,7 +104,7 @@ def bing_get_page_stats(site_url: Optional[str] = None) -> dict:
 
     Returns:
         dict: Page performance data, each entry containing:
-            - Query: The page URL
+            - Query: The page URL (Bing reuses the "Query" field name for page URLs)
             - Date: The data period
             - Clicks: Number of clicks to this page from search
             - Impressions: Number of times this page appeared in results
