@@ -40,7 +40,7 @@ def bing_add_site(site_url: str) -> dict:
     """
     try:
         bing_request(
-            "AddSite", body={"siteUrl": site_url}, http_method="PUT"
+            "AddSite", body={"siteUrl": site_url}, http_method="POST"
         )
         return {
             "success": True,
@@ -69,7 +69,7 @@ def bing_verify_site(site_url: str) -> dict:
     """
     try:
         bing_request(
-            "VerifySite", body={"siteUrl": site_url}, http_method="PUT"
+            "VerifySite", body={"siteUrl": site_url}, http_method="POST"
         )
         return {
             "success": True,
@@ -97,7 +97,7 @@ def bing_remove_site(site_url: str) -> dict:
     """
     try:
         bing_request(
-            "RemoveSite", body={"siteUrl": site_url}, http_method="DELETE"
+            "RemoveSite", body={"siteUrl": site_url}, http_method="POST"
         )
         return {
             "success": True,
