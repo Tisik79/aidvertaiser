@@ -1,7 +1,7 @@
 """Meta Ads Conversion Management Tools.
 
 This module provides MCP tools for managing Meta Ads conversions including:
-- Pixel management (list, get details)
+- Pixel management (create, list, get, update)
 - Custom conversions (CRUD)
 - Conversions API (CAPI) - server-side event sending
 - Offline conversion management
@@ -58,6 +58,91 @@ async def meta_list_pixels(
         "fields": "id,name,code,last_fired_time,is_unavailable,creation_time,owner_ad_account,data_use_setting,is_created_by_business",
     }
     return await make_api_request(endpoint, access_token, params)
+
+
+@mcp.tool()
+@meta_api_tool
+async def meta_create_pixel(
+    name: str,
+    account_id: Optional[str] = None,
+    access_token: Optional[str] = None,
+) -> dict:
+    """Creates a new Meta Pixel for an ad account.
+
+    A Meta Pixel tracks visitor activity on your website. Most accounts
+    only need one pixel. The pixel JavaScript code is returned in the
+    response's 'code' field from meta_get_pixel after creation.
+
+    Note: Pixels cannot be deleted via the API, only shared/unshared.
+
+    Args:
+        name: Name for the pixel (e.g., "My Website Pixel").
+        account_id: Meta Ads account ID. Uses default if not provided.
+        access_token: Meta API access token.
+
+    Returns:
+        Dictionary with the created pixel's ID.
+    """
+    account_id = resolve_account_id(account_id)
+    if not account_id:
+        return {"error": {"message": "account_id is required"}}
+    account_id = ensure_account_prefix(account_id)
+
+    endpoint = f"{account_id}/adspixels"
+    params = {"name": name}
+    return await make_api_request(endpoint, access_token, params, method="POST")
+
+
+@mcp.tool()
+@meta_api_tool
+async def meta_update_pixel(
+    pixel_id: str,
+    access_token: Optional[str] = None,
+    name: Optional[str] = None,
+    enable_automatic_matching: Optional[bool] = None,
+    automatic_matching_fields: Optional[List[str]] = None,
+    data_use_setting: Optional[str] = None,
+    first_party_cookie_status: Optional[str] = None,
+) -> dict:
+    """Updates a Meta Pixel's settings.
+
+    Args:
+        pixel_id: The Meta Pixel ID to update.
+        access_token: Meta API access token.
+        name: New pixel name.
+        enable_automatic_matching: Enable/disable Advanced Matching,
+            which auto-detects user data on your site for better attribution.
+        automatic_matching_fields: Fields for Advanced Matching. Options:
+            em (email), ph (phone), fn (first name), ln (last name),
+            ct (city), st (state), zp (zip), country, db (date of birth),
+            ge (gender), external_id.
+        data_use_setting: How collected data can be used. Options:
+            - ADVERTISING_AND_ANALYTICS (default)
+            - ANALYTICS_ONLY
+        first_party_cookie_status: First-party cookie setting. Options:
+            - FIRST_PARTY_COOKIE_ENABLED (default)
+            - FIRST_PARTY_COOKIE_DISABLED
+
+    Returns:
+        Dictionary with success status.
+    """
+    params = {}
+    if name is not None:
+        params["name"] = name
+    if enable_automatic_matching is not None:
+        params["enable_automatic_matching"] = str(enable_automatic_matching).lower()
+    if automatic_matching_fields is not None:
+        params["automatic_matching_fields"] = json.dumps(automatic_matching_fields)
+    if data_use_setting is not None:
+        params["data_use_setting"] = data_use_setting
+    if first_party_cookie_status is not None:
+        params["first_party_cookie_status"] = first_party_cookie_status
+
+    if not params:
+        return {"error": {"message": "No update parameters provided"}}
+
+    endpoint = f"{pixel_id}"
+    return await make_api_request(endpoint, access_token, params, method="POST")
 
 
 @mcp.tool()
