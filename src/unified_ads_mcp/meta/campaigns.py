@@ -19,7 +19,7 @@ from .client import (
 ONLY_DEFAULT_ACCOUNT = only_default_account_enabled()
 
 
-@mcp.tool(enabled=not ONLY_DEFAULT_ACCOUNT)
+@mcp.tool()
 @meta_api_tool
 async def meta_list_accounts(
     access_token: Optional[str] = None, user_id: str = "me", limit: int = 200

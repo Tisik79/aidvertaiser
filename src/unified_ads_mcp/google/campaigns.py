@@ -24,7 +24,7 @@ from .client import (
 ONLY_DEFAULT_ACCOUNT = only_default_account_enabled()
 
 
-@mcp.tool(enabled=not ONLY_DEFAULT_ACCOUNT)
+@mcp.tool()
 def google_list_accounts() -> list[dict[str, Any]]:
     """Lists all Google Ads customer accounts accessible by the authenticated user.
 
