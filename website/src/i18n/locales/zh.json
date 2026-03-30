@@ -1,0 +1,339 @@
+{
+  "nav": {
+    "platforms": "平台",
+    "capabilities": "功能",
+    "useCases": "使用场景",
+    "getStarted": "开始使用",
+    "docs": "文档",
+    "blog": "博客",
+    "toggleTheme": "切换主题"
+  },
+  "hero": {
+    "title1": "您的广告值得拥有",
+    "title2": "一位AI助手",
+    "subtitle": "基于AI的广告管理，覆盖 Google Ads、Meta Ads 及另外4个平台。180个工具，统一界面，由 MCP 驱动。",
+    "cta1": "开始使用",
+    "cta2": "在 GitHub 上查看",
+    "install": "pip install unified-ads-mcp"
+  },
+  "trustedBy": {
+    "title": "跨平台广告管理"
+  },
+  "features": {
+    "title": "广告管理一站搞定",
+    "subtitle": "六大平台集成协同工作，让您全面掌控广告生态系统。",
+    "campaigns": { "title": "广告活动管理", "description": "通过统一的AI驱动界面，在 Google Ads 和 Meta Ads 上创建、更新和监控广告活动。" },
+    "conversions": { "title": "转化跟踪", "description": "跟踪转化、上传离线数据、管理像素代码和跨平台自定义转化事件。" },
+    "audiences": { "title": "受众定位", "description": "研究兴趣、行为和人口统计数据。构建精准的受众细分以实现最大广告相关性。" },
+    "analytics": { "title": "分析与报告", "description": "从 GA4、Matomo 和 Search Console 获取实时报告。自定义维度、指标和访客画像。" },
+    "seo": { "title": "SEO 与索引", "description": "提交网址、管理站点地图、监控爬取健康状况，并跟踪 Google 和 Bing 的搜索表现。" },
+    "realtime": { "title": "实时监控", "description": "实时访客计数、活跃会话跟踪以及所有媒体资源的即时性能告警。" }
+  },
+  "pipeline": {
+    "title": "工作原理",
+    "subtitle": "从安装到AI驱动的广告管理，只需四步。",
+    "stages": {
+      "configure": { "title": "配置", "description": "为您的广告平台设置API凭据" },
+      "connect": { "title": "连接", "description": "通过浏览器 OAuth 安全连接您的账户" },
+      "command": { "title": "指令", "description": "使用自然语言管理广告活动和分析数据" },
+      "optimize": { "title": "优化", "description": "AI分析效果并提供改进建议" }
+    }
+  },
+  "cta": {
+    "title": "开始用AI管理广告",
+    "subtitle": "一键安装，管理所有广告平台。开源，永久免费。",
+    "button": "开始使用"
+  },
+  "menu": {
+    "platforms": {
+      "name": "平台",
+      "googleAds": { "title": "Google Ads", "desc": "56个工具，用于广告活动、关键词、转化、素材和 Performance Max 管理" },
+      "metaAds": { "title": "Meta Ads", "desc": "38+个工具，用于广告活动、受众、像素代码、创意素材和 Conversions API" },
+      "ga4": { "title": "Google Analytics", "desc": "21个工具，用于媒体资源、数据流、实时报告和关键事件" },
+      "searchConsole": { "title": "Search Console", "desc": "15个工具，用于搜索分析、网址检查、站点地图和网站验证" },
+      "matomo": { "title": "Matomo Analytics", "desc": "27个工具，用于访客分析、目标、实时监控和网站管理" },
+      "bing": { "title": "Bing Webmaster", "desc": "21个工具，用于网址提交、爬取管理、关键词研究和链接分析" }
+    },
+    "capabilities": {
+      "name": "功能",
+      "campaigns": { "title": "广告活动管理", "desc": "跨平台广告活动、广告组、广告和关键词的完整增删改查" },
+      "conversions": { "title": "转化跟踪", "desc": "像素管理、离线上传、CAPI事件和自定义转化" },
+      "audiences": { "title": "受众定位", "desc": "兴趣搜索、行为定位、地理位置和受众规模估算" },
+      "analytics": { "title": "分析与报告", "desc": "自定义报告、实时数据、访客画像和跨平台洞察" },
+      "seo": { "title": "SEO 与索引", "desc": "网址提交、站点地图管理、爬取优化和搜索分析" },
+      "budget": { "title": "预算与出价", "desc": "出价策略、预算分配、效果跟踪和优化" }
+    },
+    "useCases": {
+      "name": "使用场景",
+      "multiPlatform": { "title": "多平台广告活动", "desc": "在 Google Ads 和 Meta Ads 上同步启动协调的广告活动" },
+      "crossAnalytics": { "title": "跨平台分析", "desc": "整合 GA4、Matomo 和 Search Console 数据的统一分析视图" },
+      "conversionOpt": { "title": "转化优化", "desc": "优化所有平台的转化跟踪和归因" },
+      "searchPerf": { "title": "搜索表现", "desc": "结合 GSC 和 Bing 数据监控和提升搜索排名" },
+      "audienceResearch": { "title": "受众研究", "desc": "利用 Meta 兴趣和 Google 有购买意向的细分群体进行深度受众分析" },
+      "fraudPrevention": { "title": "点击欺诈防护", "desc": "监控可疑活动，保护您的广告支出免受欺诈" }
+    },
+    "integrations": {
+      "name": "集成",
+      "claude": { "title": "Claude Desktop", "desc": "原生 MCP 集成，支持自然语言广告管理" },
+      "cursor": { "title": "Cursor IDE", "desc": "直接从代码编辑器管理广告活动" },
+      "vscode": { "title": "VS Code + Continue", "desc": "通过 Continue 扩展实现IDE内广告管理" },
+      "windsurf": { "title": "Windsurf", "desc": "AI驱动的广告任务工作流集成" },
+      "cline": { "title": "Cline", "desc": "基于终端的 MCP 客户端，用于广告管理" },
+      "custom": { "title": "自定义AI应用", "desc": "使用 MCP SDK 构建您自己的广告AI" }
+    },
+    "resources": {
+      "name": "资源",
+      "ppcGuide": { "title": "PPC 大师指南", "desc": "2026年完整的端到端 PPC 广告活动执行手册" },
+      "audienceGuide": { "title": "受众定位指南", "desc": "跨平台受众细分综合指南" },
+      "biddingGuide": { "title": "出价策略", "desc": "所有出价策略详解与决策框架" },
+      "landingPages": { "title": "着陆页优化", "desc": "转化优化指南，含基准数据和最佳实践" },
+      "fraudGuide": { "title": "点击欺诈防护", "desc": "多层次点击欺诈防御策略" },
+      "analysisGuide": { "title": "广告活动分析", "desc": "指标、报告和优化检查清单" }
+    },
+    "about": {
+      "name": "关于",
+      "company": { "title": "关于 Draivix", "desc": "我们的使命、愿景，以及 Aidvertaiser 和 Draivix Corporation 背后的故事" },
+      "leadership": { "title": "领导团队", "desc": "认识推动AI广告工具发展的创始人和高管团队" },
+      "careers": { "title": "招聘信息", "desc": "加入我们的团队，共同构建AI广告的未来" },
+      "press": { "title": "新闻媒体", "desc": "最新新闻、新闻稿和媒体资源" },
+      "investors": { "title": "投资者关系", "desc": "投资者关系、财务数据和公司业绩" },
+      "partners": { "title": "合作伙伴", "desc": "合作伙伴生态系统、集成和技术联盟" },
+      "contact": { "title": "联系我们", "desc": "联系销售、支持或我们的工程团队" },
+      "blog": { "title": "博客", "desc": "关于AI广告、PPC优化和营销技术的深度见解" },
+      "events": { "title": "活动", "desc": "即将举办的网络研讨会、会议和社区聚会" },
+      "stories": { "title": "客户故事", "desc": "了解营销团队如何使用 Aidvertaiser 通过AI管理广告活动" }
+    },
+    "docs": {
+      "name": "文档",
+      "gettingStarted": { "title": "快速入门", "desc": "安装和配置 Aidvertaiser 的快速设置指南" },
+      "apiReference": { "title": "API 参考", "desc": "完整的 MCP 工具文档，包含参数和示例" },
+      "configuration": { "title": "配置", "desc": "平台凭据、OAuth 设置和环境配置" },
+      "authentication": { "title": "身份认证", "desc": "各平台的 OAuth 流程、API密钥和令牌管理" },
+      "tutorials": { "title": "教程与指南", "desc": "常见广告工作流程的分步教程" },
+      "faq": { "title": "常见问题", "desc": "关于 Aidvertaiser 最常见问题的解答" }
+    }
+  },
+  "footer": {
+    "tagline": "跨6大平台的AI广告管理。Draivix Corporation 产品。",
+    "newsletter": "订阅最新动态",
+    "emailPlaceholder": "you@company.com",
+    "subscribe": "订阅",
+    "product": "产品",
+    "productLinks": {
+      "platforms": "平台",
+      "capabilities": "功能",
+      "useCases": "使用场景",
+      "integrations": "集成",
+      "resources": "资源",
+      "docs": "文档",
+      "pricing": "定价",
+      "whatsNew": "最新动态"
+    },
+    "company": "公司",
+    "companyLinks": {
+      "about": "关于 Draivix",
+      "leadership": "领导团队",
+      "careers": "招聘信息",
+      "hiring": "加入我们",
+      "press": "新闻媒体",
+      "blog": "博客",
+      "stories": "客户故事",
+      "partners": "合作伙伴",
+      "investors": "投资者",
+      "events": "活动",
+      "contact": "联系我们"
+    },
+    "resources": "资源",
+    "resourceLinks": {
+      "docs": "文档",
+      "api": "API 参考",
+      "help": "帮助中心",
+      "community": "社区",
+      "devHub": "开发者中心",
+      "integrations": "集成",
+      "status": "服务状态",
+      "changelog": "更新日志",
+      "webinars": "网络研讨会",
+      "templates": "模板"
+    },
+    "legal": "法律条款",
+    "legalLinks": {
+      "terms": "服务条款",
+      "privacy": "隐私政策",
+      "cookies": "Cookie 政策",
+      "gdpr": "GDPR 合规",
+      "soc2": "SOC 2 Type II",
+      "iso": "ISO 27001",
+      "dpa": "数据处理协议",
+      "security": "安全概述",
+      "ai": "负责任AI政策",
+      "accessibility": "无障碍访问"
+    },
+    "copyright": "© {{year}} Draivix Corporation。保留所有权利。",
+    "sitemap": "网站地图",
+    "doNotSell": "请勿出售我的信息",
+    "cookiePrefs": "Cookie 偏好设置"
+  },
+  "meta": {
+    "title": "Aidvertaiser — AI驱动的广告管理",
+    "description": "跨 Google Ads、Meta Ads 及另外4个平台的AI广告管理。180个工具，一个 MCP 服务器。"
+  },
+  "platforms": {
+    "title": "支持的平台",
+    "subtitle": "通过180个统一工具连接6大广告和分析平台",
+    "viewAll": "查看所有平台",
+    "readMore": "探索平台",
+    "toolCount": "{{count}} 个工具"
+  },
+  "capabilities": {
+    "title": "功能",
+    "subtitle": "跨平台广告活动管理所需的一切",
+    "readMore": "了解更多"
+  },
+  "docs": {
+    "title": "文档",
+    "subtitle": "开始使用 Aidvertaiser 所需的一切",
+    "quickStart": {
+      "title": "快速入门",
+      "step1": "从 PyPI 安装 Aidvertaiser",
+      "step2": "配置您的平台凭据",
+      "step3": "连接到您的AI助手"
+    },
+    "platforms": {
+      "title": "平台设置"
+    },
+    "config": {
+      "title": "配置",
+      "description": "Aidvertaiser 使用 YAML 文件和环境变量来管理平台凭据。"
+    }
+  },
+  "useCases": {
+    "title": "使用场景",
+    "subtitle": "了解 Aidvertaiser 如何帮助营销团队通过AI管理广告",
+    "viewAll": "查看所有使用场景",
+    "readMore": "阅读更多"
+  },
+  "blog": {
+    "title": "博客",
+    "subtitle": "关于AI广告、PPC优化和营销技术的深度见解",
+    "readMore": "阅读文章",
+    "minRead": "分钟阅读",
+    "publishedOn": "发布于",
+    "backToBlog": "返回博客",
+    "relatedPosts": "相关文章",
+    "tags": "标签"
+  },
+  "common": {
+    "getStarted": "开始使用",
+    "learnMore": "了解更多",
+    "viewOnGithub": "在 GitHub 上查看",
+    "backToHome": "返回首页",
+    "share": "分享",
+    "tableOfContents": "目录",
+    "tools": "工具",
+    "backTo": "返回{{page}}"
+  },
+  "about": {
+    "breadcrumb": "关于",
+    "meta": {
+      "title": "关于 Draivix - Aidvertaiser",
+      "description": "了解 Draivix Corporation，Aidvertaiser 背后的AI软件公司。认识我们的领导团队，探索合作伙伴关系，发现职业机会。"
+    },
+    "hero": {
+      "title1": "关于",
+      "title2": "Draivix",
+      "subtitle": "构建AI驱动的广告工具，让每个营销团队更高效。从广告活动管理到跨平台分析，我们自动化最重要的工作。"
+    },
+    "toc": {
+      "company": "公司",
+      "leadership": "领导团队",
+      "vision": "愿景与使命",
+      "partners": "合作伙伴",
+      "careers": "招聘信息",
+      "events": "活动",
+      "stories": "客户故事",
+      "press": "新闻媒体",
+      "contact": "联系我们"
+    },
+    "company": {
+      "title": "公司介绍",
+      "p1": "Draivix Corporation 是一家专注于AI的软件公司，致力于构建大规模自动化和优化数字广告的工具。我们的旗舰产品 Aidvertaiser 通过模型上下文协议（MCP），为各种规模的营销团队带来AI驱动的广告管理。",
+      "p2": "Draivix 由 David Strejc 创立，基于一个简单的理念：管理多平台广告不应该需要在数十个仪表板之间切换。我们将 MCP 协议与深度平台集成相结合，让AI助手完全掌控您的广告生态系统。",
+      "aidvertaiserDesc": "AI驱动的广告 MCP 服务器。180个工具，覆盖 Google Ads、Meta Ads、GA4、Search Console、Matomo 和 Bing Webmaster。基于 MIT 许可证开源。",
+      "platformName": "Draivix 平台",
+      "platformDesc": "更广泛的 Draivix 生态系统，包含AI驱动的开发者和营销工具、基础设施自动化，以及为现代团队设计的智能工作流。"
+    },
+    "leadership": {
+      "title": "领导团队",
+      "intro": "Draivix 由工程师和营销专家领导，他们坚信AI应该增强团队能力，而非取代团队。",
+      "founderRole": "创始人兼首席执行官",
+      "founderBio": "AI研究员和全栈开发者，在广告技术、API集成和开发者工具方面拥有深厚专业知识。David 创立 Draivix，旨在将AI驱动的广告管理带给每个营销团队，将 MCP 协议与全面的平台API相结合。"
+    },
+    "vision": {
+      "title": "愿景与使命",
+      "missionLabel": "我们的使命",
+      "mission": "让每个营销团队都能使用AI驱动的广告管理。广告活动优化不应该是拥有专门广告运营团队的公司的专属奢侈品。",
+      "visionLabel": "我们的愿景",
+      "vision": "一个每个营销团队都有AI助手的世界。广告活动创建、预算优化和效果分析都通过自然对话完成。AI和人类创造力携手合作，让广告变得更好。"
+    },
+    "partners": {
+      "title": "技术合作伙伴",
+      "intro": "Aidvertaiser 与世界一流的广告和分析平台集成。我们基于官方API构建，确保可靠、安全且合规的广告管理。"
+    },
+    "careers": {
+      "title": "加入我们",
+      "intro": "我们一直在寻找充满热情的开发者、营销人员和开源贡献者，共同推动AI广告工具的边界。",
+      "benefit1Title": "打造前沿工具",
+      "benefit1Desc": "开发AI驱动的广告工具，突破营销技术的可能性边界。",
+      "benefit2Title": "完全远程",
+      "benefit2Desc": "在世界任何地方工作。我们是一个分布式团队，重视成果而非工作时间。",
+      "benefit3Title": "开源优先",
+      "benefit3Desc": "您的工作以开源形式发布。在建设职业生涯的同时为营销社区做贡献。",
+      "benefit4Title": "快速行动",
+      "benefit4Desc": "小团队，大影响。每周发布功能，而非每季度。您的想法从概念到上线，速度飞快。",
+      "ossTitle": "为 Aidvertaiser 做贡献",
+      "ossDesc": "Aidvertaiser 基于 MIT 许可证开源。贡献平台集成、工具或文档。每一个 Pull Request 都让整个社区的工具变得更好。",
+      "ossButton": "在 GitHub 上查看"
+    },
+    "events": {
+      "title": "活动",
+      "intro": "参加我们即将举办的会议、网络研讨会和社区聚会，我们将在活动中展示 Aidvertaiser 并讨论AI广告的未来。"
+    },
+    "stories": {
+      "title": "客户故事",
+      "intro": "世界各地的营销团队使用 Aidvertaiser 通过AI管理广告活动。以下是他们的一些经验分享。",
+      "quote1": "Aidvertaiser 让我们能在几分钟内（而不是几小时）在 Google 和 Meta 上同步启动广告活动。AI处理重复性的设置工作，我们专注于创意策略。",
+      "author1": "效果营销负责人",
+      "company1": "电商平台",
+      "quote2": "我们将 Aidvertaiser 集成到分析工作流中，现在只需一条自然语言命令就能拉取跨平台报告。每周为团队节省了15个小时。",
+      "author2": "市场总监",
+      "company2": "SaaS 初创公司",
+      "quote3": "转化跟踪工具统一了我们跨平台的像素管理。我们发现了之前不知道的归因差距，ROAS 提升了23%。",
+      "author3": "效果营销主管",
+      "company3": "数字营销代理"
+    },
+    "press": {
+      "title": "新闻媒体",
+      "intro": "如需新闻咨询、媒体资源和公司信息，请联系我们的传播团队。",
+      "inquiriesTitle": "媒体咨询",
+      "inquiriesDesc": "用于采访、产品评测和媒体报道。",
+      "resourcesTitle": "品牌资源",
+      "resourcesDesc": "供媒体使用的标志、截图和公司概况。",
+      "comingSoon": "即将推出"
+    },
+    "investors": {
+      "title": "投资者关系",
+      "desc": "Draivix Corporation 是一家私有公司。如有投资咨询和合作机会，请联系 investors@aidvertaiser.com。"
+    },
+    "contact": {
+      "title": "联系我们",
+      "intro": "有关于 Aidvertaiser 的问题，想讨论合作伙伴关系，或需要企业支持？我们很乐意与您交流。",
+      "emailLabel": "电子邮件"
+    },
+    "cta": {
+      "title": "开始用AI管理广告",
+      "desc": "几秒钟内安装 Aidvertaiser 并连接您的第一个平台。开源，MIT 许可证，永久免费。",
+      "github": "在 GitHub 上查看"
+    }
+  }
+}

@@ -1,0 +1,339 @@
+{
+  "nav": {
+    "platforms": "Plataformas",
+    "capabilities": "Funcionalidades",
+    "useCases": "Casos de uso",
+    "getStarted": "Comenzar",
+    "docs": "Documentacion",
+    "blog": "Blog",
+    "toggleTheme": "Cambiar tema"
+  },
+  "hero": {
+    "title1": "Tus anuncios merecen",
+    "title2": "un copiloto",
+    "subtitle": "Gestion publicitaria impulsada por IA en Google Ads, Meta Ads y 4 plataformas mas. 180 herramientas, una interfaz unificada, impulsado por MCP.",
+    "cta1": "Comenzar",
+    "cta2": "Ver en GitHub",
+    "install": "pip install unified-ads-mcp"
+  },
+  "trustedBy": {
+    "title": "Gestiona publicidad en"
+  },
+  "features": {
+    "title": "Todo lo que tus anuncios necesitan",
+    "subtitle": "Seis potentes integraciones de plataformas que trabajan juntas para darte control total sobre tu ecosistema publicitario.",
+    "campaigns": { "title": "Gestion de campanas", "description": "Crea, actualiza y monitorea campanas en Google Ads y Meta Ads desde una unica interfaz impulsada por IA." },
+    "conversions": { "title": "Seguimiento de conversiones", "description": "Rastrea conversiones, sube datos offline, gestiona pixeles y eventos de conversion personalizados en todas las plataformas." },
+    "audiences": { "title": "Segmentacion de audiencias", "description": "Investiga intereses, comportamientos y datos demograficos. Crea segmentos de audiencia precisos para maxima relevancia." },
+    "analytics": { "title": "Analisis e informes", "description": "Obtiene informes en tiempo real desde GA4, Matomo y Search Console. Dimensiones personalizadas, metricas y perfiles de visitantes." },
+    "seo": { "title": "SEO e indexacion", "description": "Envia URLs, gestiona sitemaps, monitorea la salud del rastreo y sigue el rendimiento de busqueda en Google y Bing." },
+    "realtime": { "title": "Monitoreo en tiempo real", "description": "Conteo de visitantes en vivo, seguimiento de sesiones activas y alertas de rendimiento instantaneas en todas tus propiedades." }
+  },
+  "pipeline": {
+    "title": "Como funciona",
+    "subtitle": "Cuatro pasos desde la configuracion hasta la gestion publicitaria impulsada por IA.",
+    "stages": {
+      "configure": { "title": "Configurar", "description": "Configura las credenciales API de tus plataformas publicitarias" },
+      "connect": { "title": "Conectar", "description": "OAuth basado en navegador conecta tus cuentas de forma segura" },
+      "command": { "title": "Comandar", "description": "Usa lenguaje natural para gestionar campanas y analisis" },
+      "optimize": { "title": "Optimizar", "description": "La IA analiza el rendimiento y sugiere mejoras" }
+    }
+  },
+  "cta": {
+    "title": "Gestiona tus anuncios con IA",
+    "subtitle": "Una sola instalacion para gestionar todas tus plataformas publicitarias. Open source, gratis para siempre.",
+    "button": "Comenzar"
+  },
+  "menu": {
+    "platforms": {
+      "name": "Plataformas",
+      "googleAds": { "title": "Google Ads", "desc": "56 herramientas para campanas, palabras clave, conversiones, assets y gestion de Performance Max" },
+      "metaAds": { "title": "Meta Ads", "desc": "38+ herramientas para campanas, audiencias, pixeles, creativos y API de Conversiones" },
+      "ga4": { "title": "Google Analytics", "desc": "21 herramientas para propiedades, flujos de datos, informes en tiempo real y eventos clave" },
+      "searchConsole": { "title": "Search Console", "desc": "15 herramientas para analisis de busqueda, inspeccion de URL, sitemaps y verificacion de sitios" },
+      "matomo": { "title": "Matomo Analytics", "desc": "27 herramientas para analisis de visitantes, objetivos, monitoreo en tiempo real y gestion de sitios" },
+      "bing": { "title": "Bing Webmaster", "desc": "21 herramientas para envio de URL, gestion de rastreo, investigacion de palabras clave y analisis de enlaces" }
+    },
+    "capabilities": {
+      "name": "Funcionalidades",
+      "campaigns": { "title": "Gestion de campanas", "desc": "CRUD completo para campanas, grupos de anuncios, anuncios y palabras clave en todas las plataformas" },
+      "conversions": { "title": "Seguimiento de conversiones", "desc": "Gestion de pixeles, cargas offline, eventos CAPI y conversiones personalizadas" },
+      "audiences": { "title": "Segmentacion de audiencias", "desc": "Busqueda de intereses, segmentacion por comportamiento, geolocalizacion y estimacion de audiencia" },
+      "analytics": { "title": "Analisis e informes", "desc": "Informes personalizados, datos en tiempo real, perfiles de visitantes e insights multiplataforma" },
+      "seo": { "title": "SEO e indexacion", "desc": "Envio de URL, gestion de sitemaps, optimizacion de rastreo y analisis de busqueda" },
+      "budget": { "title": "Presupuesto y pujas", "desc": "Estrategias de puja, asignacion de presupuesto, seguimiento de rendimiento y optimizacion" }
+    },
+    "useCases": {
+      "name": "Casos de uso",
+      "multiPlatform": { "title": "Campanas multiplataforma", "desc": "Lanza campanas coordinadas en Google Ads y Meta Ads simultaneamente" },
+      "crossAnalytics": { "title": "Analisis multiplataforma", "desc": "Vista analitica unificada combinando datos de GA4, Matomo y Search Console" },
+      "conversionOpt": { "title": "Optimizacion de conversiones", "desc": "Optimiza el seguimiento de conversiones y la atribucion en todas las plataformas" },
+      "searchPerf": { "title": "Rendimiento de busqueda", "desc": "Monitorea y mejora tus rankings usando datos de GSC y Bing conjuntamente" },
+      "audienceResearch": { "title": "Investigacion de audiencias", "desc": "Analisis profundo de audiencias usando intereses de Meta y segmentos in-market de Google" },
+      "fraudPrevention": { "title": "Prevencion de fraude de clics", "desc": "Monitorea actividad sospechosa y protege tu gasto publicitario contra el fraude" }
+    },
+    "integrations": {
+      "name": "Integraciones",
+      "claude": { "title": "Claude Desktop", "desc": "Integracion MCP nativa para gestion publicitaria en lenguaje natural" },
+      "cursor": { "title": "Cursor IDE", "desc": "Gestiona campanas directamente desde tu editor de codigo" },
+      "vscode": { "title": "VS Code + Continue", "desc": "Gestion publicitaria desde el IDE con la extension Continue" },
+      "windsurf": { "title": "Windsurf", "desc": "Integracion de flujos de trabajo IA para tareas publicitarias" },
+      "cline": { "title": "Cline", "desc": "Cliente MCP en terminal para gestion publicitaria" },
+      "custom": { "title": "Aplicaciones IA personalizadas", "desc": "Crea tu propia IA publicitaria con el SDK MCP" }
+    },
+    "resources": {
+      "name": "Recursos",
+      "ppcGuide": { "title": "Guia PPC completa", "desc": "Manual completo de ejecucion de campanas PPC de principio a fin para 2026" },
+      "audienceGuide": { "title": "Guia de segmentacion de audiencias", "desc": "Guia completa de segmentacion de audiencias en todas las plataformas" },
+      "biddingGuide": { "title": "Estrategias de pujas", "desc": "Todas las estrategias de pujas explicadas con marcos de decision" },
+      "landingPages": { "title": "Optimizacion de paginas de destino", "desc": "Guia de optimizacion de conversiones con benchmarks y mejores practicas" },
+      "fraudGuide": { "title": "Prevencion de fraude de clics", "desc": "Estrategias de defensa multicapa contra el fraude de clics" },
+      "analysisGuide": { "title": "Analisis de campanas", "desc": "Metricas, informes y listas de verificacion de optimizacion" }
+    },
+    "about": {
+      "name": "Acerca de",
+      "company": { "title": "Acerca de Draivix", "desc": "Nuestra mision, vision y la historia detras de Aidvertaiser y Draivix Corporation" },
+      "leadership": { "title": "Equipo directivo", "desc": "Conoce a los fundadores y al equipo ejecutivo que impulsa las herramientas publicitarias con IA" },
+      "careers": { "title": "Carreras", "desc": "Unete a nuestro equipo y ayuda a construir el futuro de la publicidad con IA" },
+      "press": { "title": "Prensa y medios", "desc": "Ultimas noticias, comunicados de prensa y recursos para medios" },
+      "investors": { "title": "Inversores", "desc": "Relaciones con inversores, datos financieros y rendimiento de la empresa" },
+      "partners": { "title": "Socios", "desc": "Ecosistema de socios, integraciones y alianzas tecnologicas" },
+      "contact": { "title": "Contacto", "desc": "Contacta a nuestro equipo de ventas, soporte o ingenieria" },
+      "blog": { "title": "Blog", "desc": "Articulos sobre publicidad con IA, optimizacion PPC y tecnologia de marketing" },
+      "events": { "title": "Eventos", "desc": "Proximos webinarios, conferencias y meetups de la comunidad" },
+      "stories": { "title": "Historias de clientes", "desc": "Descubre como los equipos de marketing usan Aidvertaiser para gestionar campanas con IA" }
+    },
+    "docs": {
+      "name": "Documentacion",
+      "gettingStarted": { "title": "Primeros pasos", "desc": "Guia de configuracion rapida para instalar y configurar Aidvertaiser" },
+      "apiReference": { "title": "Referencia API", "desc": "Documentacion completa de herramientas MCP con parametros y ejemplos" },
+      "configuration": { "title": "Configuracion", "desc": "Credenciales de plataformas, configuracion OAuth y variables de entorno" },
+      "authentication": { "title": "Autenticacion", "desc": "Flujos OAuth, claves API y gestion de tokens para cada plataforma" },
+      "tutorials": { "title": "Tutoriales y guias", "desc": "Guias paso a paso para flujos de trabajo publicitarios comunes" },
+      "faq": { "title": "FAQ", "desc": "Respuestas a las preguntas mas frecuentes sobre Aidvertaiser" }
+    }
+  },
+  "footer": {
+    "tagline": "Gestion publicitaria impulsada por IA en 6 plataformas. Un producto de Draivix Corporation.",
+    "newsletter": "Mantente al dia",
+    "emailPlaceholder": "tu@empresa.com",
+    "subscribe": "Suscribirse",
+    "product": "Producto",
+    "productLinks": {
+      "platforms": "Plataformas",
+      "capabilities": "Funcionalidades",
+      "useCases": "Casos de uso",
+      "integrations": "Integraciones",
+      "resources": "Recursos",
+      "docs": "Documentacion",
+      "pricing": "Precios",
+      "whatsNew": "Novedades"
+    },
+    "company": "Empresa",
+    "companyLinks": {
+      "about": "Acerca de Draivix",
+      "leadership": "Direccion",
+      "careers": "Carreras",
+      "hiring": "Empleo",
+      "press": "Prensa y medios",
+      "blog": "Blog",
+      "stories": "Historias de clientes",
+      "partners": "Socios",
+      "investors": "Inversores",
+      "events": "Eventos",
+      "contact": "Contacto"
+    },
+    "resources": "Recursos",
+    "resourceLinks": {
+      "docs": "Documentacion",
+      "api": "Referencia API",
+      "help": "Centro de ayuda",
+      "community": "Comunidad",
+      "devHub": "Centro de desarrollo",
+      "integrations": "Integraciones",
+      "status": "Estado del servicio",
+      "changelog": "Registro de cambios",
+      "webinars": "Webinarios",
+      "templates": "Plantillas"
+    },
+    "legal": "Legal",
+    "legalLinks": {
+      "terms": "Terminos de servicio",
+      "privacy": "Politica de privacidad",
+      "cookies": "Politica de cookies",
+      "gdpr": "Cumplimiento RGPD",
+      "soc2": "SOC 2 Type II",
+      "iso": "ISO 27001",
+      "dpa": "Acuerdo de procesamiento de datos",
+      "security": "Resumen de seguridad",
+      "ai": "Politica de IA responsable",
+      "accessibility": "Accesibilidad"
+    },
+    "copyright": "\u00a9 {{year}} Draivix Corporation. Todos los derechos reservados.",
+    "sitemap": "Mapa del sitio",
+    "doNotSell": "No vender mi informacion",
+    "cookiePrefs": "Preferencias de cookies"
+  },
+  "meta": {
+    "title": "Aidvertaiser \u2014 Gestion publicitaria impulsada por IA",
+    "description": "Gestion publicitaria impulsada por IA en Google Ads, Meta Ads y 4 plataformas mas. 180 herramientas, un servidor MCP."
+  },
+  "platforms": {
+    "title": "Plataformas soportadas",
+    "subtitle": "Conectate a 6 grandes plataformas de publicidad y analisis con 180 herramientas unificadas",
+    "viewAll": "Ver todas las plataformas",
+    "readMore": "Explorar plataforma",
+    "toolCount": "{{count}} herramientas"
+  },
+  "capabilities": {
+    "title": "Funcionalidades",
+    "subtitle": "Todo lo que necesitas para gestionar campanas publicitarias en todas las plataformas",
+    "readMore": "Saber mas"
+  },
+  "docs": {
+    "title": "Documentacion",
+    "subtitle": "Todo lo que necesitas para comenzar con Aidvertaiser",
+    "quickStart": {
+      "title": "Inicio rapido",
+      "step1": "Instala Aidvertaiser desde PyPI",
+      "step2": "Configura las credenciales de tus plataformas",
+      "step3": "Conectate a tu asistente de IA"
+    },
+    "platforms": {
+      "title": "Configuracion de plataformas"
+    },
+    "config": {
+      "title": "Configuracion",
+      "description": "Aidvertaiser utiliza archivos YAML y variables de entorno para las credenciales de plataformas."
+    }
+  },
+  "useCases": {
+    "title": "Casos de uso",
+    "subtitle": "Descubre como Aidvertaiser ayuda a los equipos de marketing a gestionar publicidad con IA",
+    "viewAll": "Ver todos los casos de uso",
+    "readMore": "Leer mas"
+  },
+  "blog": {
+    "title": "Blog",
+    "subtitle": "Articulos sobre publicidad con IA, optimizacion PPC y tecnologia de marketing",
+    "readMore": "Leer articulo",
+    "minRead": "min de lectura",
+    "publishedOn": "Publicado el",
+    "backToBlog": "Volver al blog",
+    "relatedPosts": "Articulos relacionados",
+    "tags": "Etiquetas"
+  },
+  "common": {
+    "getStarted": "Comenzar",
+    "learnMore": "Saber mas",
+    "viewOnGithub": "Ver en GitHub",
+    "backToHome": "Volver al inicio",
+    "share": "Compartir",
+    "tableOfContents": "Tabla de contenidos",
+    "tools": "herramientas",
+    "backTo": "Volver a {{page}}"
+  },
+  "about": {
+    "breadcrumb": "Acerca de",
+    "meta": {
+      "title": "Acerca de Draivix - Aidvertaiser",
+      "description": "Conoce Draivix Corporation, la empresa enfocada en IA detras de Aidvertaiser. Conoce a nuestro equipo directivo, explora alianzas y descubre oportunidades profesionales."
+    },
+    "hero": {
+      "title1": "Acerca de",
+      "title2": "Draivix",
+      "subtitle": "Construimos herramientas publicitarias impulsadas por IA que hacen a cada equipo de marketing mas productivo. Desde la gestion de campanas hasta el analisis multiplataforma, automatizamos lo que mas importa."
+    },
+    "toc": {
+      "company": "Empresa",
+      "leadership": "Direccion",
+      "vision": "Vision y mision",
+      "partners": "Socios",
+      "careers": "Carreras",
+      "events": "Eventos",
+      "stories": "Historias de clientes",
+      "press": "Prensa y medios",
+      "contact": "Contacto"
+    },
+    "company": {
+      "title": "La empresa",
+      "p1": "Draivix Corporation es una empresa enfocada en IA que desarrolla herramientas para automatizar y optimizar la publicidad digital a escala. Nuestro producto principal, Aidvertaiser, lleva la gestion publicitaria con IA a equipos de marketing de todos los tamanos a traves del Model Context Protocol.",
+      "p2": "Fundada por David Strejc, Draivix se basa en una creencia simple: gestionar publicidad en multiples plataformas no deberia requerir alternar entre docenas de paneles de control. Combinamos el protocolo MCP con integraciones profundas para dar a los asistentes de IA control total sobre tu ecosistema publicitario.",
+      "aidvertaiserDesc": "Servidor MCP publicitario impulsado por IA. 180 herramientas en Google Ads, Meta Ads, GA4, Search Console, Matomo y Bing Webmaster. Open source bajo licencia MIT.",
+      "platformName": "Draivix Platform",
+      "platformDesc": "El ecosistema mas amplio de Draivix: herramientas IA para desarrolladores y profesionales del marketing, automatizacion de infraestructura y flujos de trabajo inteligentes disenados para equipos modernos."
+    },
+    "leadership": {
+      "title": "Direccion",
+      "intro": "Draivix esta liderada por ingenieros y profesionales del marketing que creen que la IA debe potenciar las capacidades de los equipos, no reemplazarlos.",
+      "founderRole": "Fundador y CEO",
+      "founderBio": "Investigador en IA y desarrollador full-stack con profunda experiencia en tecnologia publicitaria, integraciones de API y herramientas para desarrolladores. David fundo Draivix para llevar la gestion publicitaria con IA a todos los equipos de marketing, combinando el protocolo MCP con APIs completas de plataformas."
+    },
+    "vision": {
+      "title": "Vision y mision",
+      "missionLabel": "Nuestra mision",
+      "mission": "Hacer que la gestion publicitaria con IA sea accesible para todos los equipos de marketing. La optimizacion de campanas no deberia ser un lujo reservado para empresas con equipos dedicados de operaciones publicitarias.",
+      "visionLabel": "Nuestra vision",
+      "vision": "Un mundo donde cada equipo de marketing tenga un copiloto de IA. Donde la creacion de campanas, la optimizacion de presupuestos y el analisis de rendimiento ocurran a traves de conversacion natural. Donde la IA y la creatividad humana trabajen juntas para mejorar la publicidad."
+    },
+    "partners": {
+      "title": "Socios tecnologicos",
+      "intro": "Aidvertaiser se integra con plataformas publicitarias y de analisis de clase mundial. Construimos sobre APIs oficiales para garantizar una gestion publicitaria confiable, segura y conforme."
+    },
+    "careers": {
+      "title": "Unete a nosotros",
+      "intro": "Siempre estamos buscando desarrolladores, profesionales del marketing y contribuidores open source apasionados que quieran superar los limites de las herramientas publicitarias con IA.",
+      "benefit1Title": "Crea herramientas de vanguardia",
+      "benefit1Desc": "Trabaja en herramientas publicitarias con IA que superan los limites de lo que la tecnologia de marketing puede hacer.",
+      "benefit2Title": "Totalmente remoto",
+      "benefit2Desc": "Trabaja desde cualquier lugar del mundo. Somos un equipo distribuido que valora los resultados por encima de las horas de oficina.",
+      "benefit3Title": "Open source primero",
+      "benefit3Desc": "Tu trabajo se publica como open source. Contribuye a la comunidad de marketing mientras construyes tu carrera.",
+      "benefit4Title": "Muevete rapido",
+      "benefit4Desc": "Equipo pequeno, gran impacto. Lanza funcionalidades semanalmente, no trimestralmente. Tus ideas pasan del concepto a produccion rapidamente.",
+      "ossTitle": "Contribuye a Aidvertaiser",
+      "ossDesc": "Aidvertaiser es open source bajo la licencia MIT. Contribuye con integraciones de plataformas, herramientas o documentacion. Cada pull request mejora la herramienta para toda la comunidad.",
+      "ossButton": "Ver en GitHub"
+    },
+    "events": {
+      "title": "Eventos",
+      "intro": "Unete a nosotros en proximas conferencias, webinarios y meetups de la comunidad donde demostramos Aidvertaiser y discutimos el futuro de la publicidad con IA."
+    },
+    "stories": {
+      "title": "Historias de clientes",
+      "intro": "Equipos de marketing de todo el mundo usan Aidvertaiser para gestionar campanas publicitarias con IA. Aqui estan algunas de sus experiencias.",
+      "quote1": "Aidvertaiser nos permitio lanzar campanas coordinadas en Google y Meta en minutos en lugar de horas. La IA maneja la configuracion repetitiva mientras nosotros nos enfocamos en la estrategia creativa.",
+      "author1": "Responsable de marketing de rendimiento",
+      "company1": "Plataforma de comercio electronico",
+      "quote2": "Integramos Aidvertaiser en nuestro flujo de trabajo analitico y ahora generamos informes multiplataforma con un solo comando en lenguaje natural. Ahorro a nuestro equipo 15 horas por semana.",
+      "author2": "Director de marketing",
+      "company2": "Startup SaaS",
+      "quote3": "Las herramientas de seguimiento de conversiones unificaron nuestra gestion de pixeles en todas las plataformas. Detectamos brechas de atribucion que desconociamos y mejoramos el ROAS en un 23%.",
+      "author3": "Lider de marketing de rendimiento",
+      "company3": "Agencia digital"
+    },
+    "press": {
+      "title": "Prensa y medios",
+      "intro": "Para consultas de prensa, recursos para medios e informacion de la empresa, por favor contacta a nuestro equipo de comunicaciones.",
+      "inquiriesTitle": "Consultas de prensa",
+      "inquiriesDesc": "Para entrevistas, resenas de productos y cobertura mediatica.",
+      "resourcesTitle": "Recursos de marca",
+      "resourcesDesc": "Logos, capturas de pantalla y ficha informativa de la empresa para uso mediatico.",
+      "comingSoon": "Proximamente"
+    },
+    "investors": {
+      "title": "Relaciones con inversores",
+      "desc": "Draivix Corporation es una empresa privada. Para consultas de inversores y oportunidades de asociacion, contactanos en investors@aidvertaiser.com."
+    },
+    "contact": {
+      "title": "Contacto",
+      "intro": "Tienes preguntas sobre Aidvertaiser, quieres discutir una alianza o necesitas soporte empresarial? Nos encantaria saber de ti.",
+      "emailLabel": "Correo electronico"
+    },
+    "cta": {
+      "title": "Gestiona tus anuncios con IA",
+      "desc": "Instala Aidvertaiser en segundos y conecta tu primera plataforma. Open source, licencia MIT, gratis para siempre.",
+      "github": "Ver en GitHub"
+    }
+  }
+}

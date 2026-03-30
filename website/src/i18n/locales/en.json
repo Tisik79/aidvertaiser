@@ -1,0 +1,339 @@
+{
+  "nav": {
+    "platforms": "Platforms",
+    "capabilities": "Capabilities",
+    "useCases": "Use Cases",
+    "getStarted": "Get Started",
+    "docs": "Documentation",
+    "blog": "Blog",
+    "toggleTheme": "Toggle theme"
+  },
+  "hero": {
+    "title1": "Your Ads Deserve",
+    "title2": "a Co-Pilot",
+    "subtitle": "AI-powered advertising management across Google Ads, Meta Ads, and 4 more platforms. 180 tools, one unified interface, powered by MCP.",
+    "cta1": "Get Started",
+    "cta2": "View on GitHub",
+    "install": "pip install unified-ads-mcp"
+  },
+  "trustedBy": {
+    "title": "Manage advertising across"
+  },
+  "features": {
+    "title": "Everything Your Ads Need",
+    "subtitle": "Six powerful platform integrations working together to give you complete control over your advertising ecosystem.",
+    "campaigns": { "title": "Campaign Management", "description": "Create, update, and monitor campaigns across Google Ads and Meta Ads from a single AI-powered interface." },
+    "conversions": { "title": "Conversion Tracking", "description": "Track conversions, upload offline data, manage pixels and custom conversion events across all platforms." },
+    "audiences": { "title": "Audience Targeting", "description": "Research interests, behaviors, and demographics. Build precise audience segments for maximum ad relevance." },
+    "analytics": { "title": "Analytics & Reporting", "description": "Pull real-time reports from GA4, Matomo, and Search Console. Custom dimensions, metrics, and visitor profiles." },
+    "seo": { "title": "SEO & Indexing", "description": "Submit URLs, manage sitemaps, monitor crawl health, and track search performance across Google and Bing." },
+    "realtime": { "title": "Real-time Monitoring", "description": "Live visitor counts, active session tracking, and instant performance alerts across all your properties." }
+  },
+  "pipeline": {
+    "title": "How It Works",
+    "subtitle": "Four steps from setup to AI-powered advertising management.",
+    "stages": {
+      "configure": { "title": "Configure", "description": "Set up API credentials for your ad platforms" },
+      "connect": { "title": "Connect", "description": "Browser-based OAuth connects your accounts securely" },
+      "command": { "title": "Command", "description": "Use natural language to manage campaigns and analytics" },
+      "optimize": { "title": "Optimize", "description": "AI analyzes performance and suggests improvements" }
+    }
+  },
+  "cta": {
+    "title": "Start Managing Ads with AI",
+    "subtitle": "One install to manage all your advertising platforms. Open source, forever free.",
+    "button": "Get Started"
+  },
+  "menu": {
+    "platforms": {
+      "name": "Platforms",
+      "googleAds": { "title": "Google Ads", "desc": "56 tools for campaigns, keywords, conversions, assets, and Performance Max management" },
+      "metaAds": { "title": "Meta Ads", "desc": "38+ tools for campaigns, audiences, pixels, creatives, and Conversions API" },
+      "ga4": { "title": "Google Analytics", "desc": "21 tools for properties, data streams, real-time reports, and key events" },
+      "searchConsole": { "title": "Search Console", "desc": "15 tools for search analytics, URL inspection, sitemaps, and site verification" },
+      "matomo": { "title": "Matomo Analytics", "desc": "27 tools for visitor analytics, goals, real-time monitoring, and site management" },
+      "bing": { "title": "Bing Webmaster", "desc": "21 tools for URL submission, crawl management, keyword research, and link analysis" }
+    },
+    "capabilities": {
+      "name": "Capabilities",
+      "campaigns": { "title": "Campaign Management", "desc": "Full CRUD for campaigns, ad groups, ads, and keywords across platforms" },
+      "conversions": { "title": "Conversion Tracking", "desc": "Pixel management, offline uploads, CAPI events, and custom conversions" },
+      "audiences": { "title": "Audience Targeting", "desc": "Interest search, behavioral targeting, geo-locations, and audience estimation" },
+      "analytics": { "title": "Analytics & Reporting", "desc": "Custom reports, real-time data, visitor profiles, and cross-platform insights" },
+      "seo": { "title": "SEO & Indexing", "desc": "URL submission, sitemap management, crawl optimization, and search analytics" },
+      "budget": { "title": "Budget & Bidding", "desc": "Bidding strategies, budget allocation, performance tracking, and optimization" }
+    },
+    "useCases": {
+      "name": "Use Cases",
+      "multiPlatform": { "title": "Multi-Platform Campaigns", "desc": "Launch coordinated campaigns across Google Ads and Meta Ads simultaneously" },
+      "crossAnalytics": { "title": "Cross-Platform Analytics", "desc": "Unified analytics view combining GA4, Matomo, and Search Console data" },
+      "conversionOpt": { "title": "Conversion Optimization", "desc": "Optimize conversion tracking and attribution across all platforms" },
+      "searchPerf": { "title": "Search Performance", "desc": "Monitor and improve search rankings using GSC and Bing data together" },
+      "audienceResearch": { "title": "Audience Research", "desc": "Deep audience analysis using Meta interests and Google in-market segments" },
+      "fraudPrevention": { "title": "Click Fraud Prevention", "desc": "Monitor suspicious activity and protect your ad spend from fraud" }
+    },
+    "integrations": {
+      "name": "Integrations",
+      "claude": { "title": "Claude Desktop", "desc": "Native MCP integration for natural language ad management" },
+      "cursor": { "title": "Cursor IDE", "desc": "Manage campaigns directly from your code editor" },
+      "vscode": { "title": "VS Code + Continue", "desc": "IDE-based advertising management with Continue extension" },
+      "windsurf": { "title": "Windsurf", "desc": "AI-powered workflow integration for advertising tasks" },
+      "cline": { "title": "Cline", "desc": "Terminal-based MCP client for ad management" },
+      "custom": { "title": "Custom AI Apps", "desc": "Build your own advertising AI with MCP SDK" }
+    },
+    "resources": {
+      "name": "Resources",
+      "ppcGuide": { "title": "PPC Master Guide", "desc": "Complete end-to-end PPC campaign execution manual for 2026" },
+      "audienceGuide": { "title": "Audience Targeting Guide", "desc": "Comprehensive guide to audience segmentation across platforms" },
+      "biddingGuide": { "title": "Bidding Strategies", "desc": "All bidding strategies explained with decision frameworks" },
+      "landingPages": { "title": "Landing Page Optimization", "desc": "Conversion optimization guide with benchmarks and best practices" },
+      "fraudGuide": { "title": "Click Fraud Prevention", "desc": "Multi-layered defense strategies against click fraud" },
+      "analysisGuide": { "title": "Campaign Analysis", "desc": "Metrics, reporting, and optimization checklists" }
+    },
+    "about": {
+      "name": "About",
+      "company": { "title": "About Draivix", "desc": "Our mission, vision, and the story behind Aidvertaiser and Draivix Corporation" },
+      "leadership": { "title": "Leadership Team", "desc": "Meet the founders and executive team driving AI-powered advertising tools" },
+      "careers": { "title": "Careers", "desc": "Join our team and help build the future of AI-powered advertising" },
+      "press": { "title": "Press & Media", "desc": "Latest news, press releases, and media resources" },
+      "investors": { "title": "Investors", "desc": "Investor relations, financials, and company performance" },
+      "partners": { "title": "Partners", "desc": "Partner ecosystem, integrations, and technology alliances" },
+      "contact": { "title": "Contact Us", "desc": "Get in touch with sales, support, or our engineering team" },
+      "blog": { "title": "Blog", "desc": "Insights on AI-powered advertising, PPC optimization, and marketing technology" },
+      "events": { "title": "Events", "desc": "Upcoming webinars, conferences, and community meetups" },
+      "stories": { "title": "Customer Stories", "desc": "See how marketing teams use Aidvertaiser to manage ad campaigns with AI" }
+    },
+    "docs": {
+      "name": "Docs",
+      "gettingStarted": { "title": "Getting Started", "desc": "Quick setup guide to install and configure Aidvertaiser" },
+      "apiReference": { "title": "API Reference", "desc": "Complete MCP tool documentation with parameters and examples" },
+      "configuration": { "title": "Configuration", "desc": "Platform credentials, OAuth setup, and environment configuration" },
+      "authentication": { "title": "Authentication", "desc": "OAuth flows, API keys, and token management for each platform" },
+      "tutorials": { "title": "Tutorials & Guides", "desc": "Step-by-step walkthroughs for common advertising workflows" },
+      "faq": { "title": "FAQ", "desc": "Answers to the most common questions about Aidvertaiser" }
+    }
+  },
+  "footer": {
+    "tagline": "AI-powered advertising management across 6 platforms. A Draivix Corporation product.",
+    "newsletter": "Stay in the loop",
+    "emailPlaceholder": "you@company.com",
+    "subscribe": "Subscribe",
+    "product": "Product",
+    "productLinks": {
+      "platforms": "Platforms",
+      "capabilities": "Capabilities",
+      "useCases": "Use Cases",
+      "integrations": "Integrations",
+      "resources": "Resources",
+      "docs": "Documentation",
+      "pricing": "Pricing",
+      "whatsNew": "What's New"
+    },
+    "company": "Company",
+    "companyLinks": {
+      "about": "About Draivix",
+      "leadership": "Leadership",
+      "careers": "Careers",
+      "hiring": "Hiring",
+      "press": "Press & Media",
+      "blog": "Blog",
+      "stories": "Customer Stories",
+      "partners": "Partners",
+      "investors": "Investors",
+      "events": "Events",
+      "contact": "Contact"
+    },
+    "resources": "Resources",
+    "resourceLinks": {
+      "docs": "Documentation",
+      "api": "API Reference",
+      "help": "Help Center",
+      "community": "Community",
+      "devHub": "Developer Hub",
+      "integrations": "Integrations",
+      "status": "Status Page",
+      "changelog": "Changelog",
+      "webinars": "Webinars",
+      "templates": "Templates"
+    },
+    "legal": "Legal",
+    "legalLinks": {
+      "terms": "Terms of Service",
+      "privacy": "Privacy Policy",
+      "cookies": "Cookie Policy",
+      "gdpr": "GDPR Compliance",
+      "soc2": "SOC 2 Type II",
+      "iso": "ISO 27001",
+      "dpa": "Data Processing Agreement",
+      "security": "Security Overview",
+      "ai": "Responsible AI Policy",
+      "accessibility": "Accessibility"
+    },
+    "copyright": "\u00a9 {{year}} Draivix Corporation. All rights reserved.",
+    "sitemap": "Sitemap",
+    "doNotSell": "Do Not Sell My Info",
+    "cookiePrefs": "Cookie Preferences"
+  },
+  "meta": {
+    "title": "Aidvertaiser \u2014 AI-Powered Advertising Management",
+    "description": "AI-powered advertising management across Google Ads, Meta Ads, and 4 more platforms. 180 tools, one MCP server."
+  },
+  "platforms": {
+    "title": "Supported Platforms",
+    "subtitle": "Connect to 6 major advertising and analytics platforms with 180 unified tools",
+    "viewAll": "View all platforms",
+    "readMore": "Explore platform",
+    "toolCount": "{{count}} tools"
+  },
+  "capabilities": {
+    "title": "Capabilities",
+    "subtitle": "Everything you need to manage advertising campaigns across platforms",
+    "readMore": "Learn more"
+  },
+  "docs": {
+    "title": "Documentation",
+    "subtitle": "Everything you need to get started with Aidvertaiser",
+    "quickStart": {
+      "title": "Quick Start",
+      "step1": "Install Aidvertaiser from PyPI",
+      "step2": "Configure your platform credentials",
+      "step3": "Connect to your AI assistant"
+    },
+    "platforms": {
+      "title": "Platform Setup"
+    },
+    "config": {
+      "title": "Configuration",
+      "description": "Aidvertaiser uses YAML files and environment variables for platform credentials."
+    }
+  },
+  "useCases": {
+    "title": "Use Cases",
+    "subtitle": "See how Aidvertaiser helps marketing teams manage advertising with AI",
+    "viewAll": "View all use cases",
+    "readMore": "Read more"
+  },
+  "blog": {
+    "title": "Blog",
+    "subtitle": "Insights on AI-powered advertising, PPC optimization, and marketing technology",
+    "readMore": "Read article",
+    "minRead": "min read",
+    "publishedOn": "Published on",
+    "backToBlog": "Back to blog",
+    "relatedPosts": "Related Articles",
+    "tags": "Tags"
+  },
+  "common": {
+    "getStarted": "Get Started",
+    "learnMore": "Learn More",
+    "viewOnGithub": "View on GitHub",
+    "backToHome": "Back to Home",
+    "share": "Share",
+    "tableOfContents": "Table of Contents",
+    "tools": "tools",
+    "backTo": "Back to {{page}}"
+  },
+  "about": {
+    "breadcrumb": "About",
+    "meta": {
+      "title": "About Draivix - Aidvertaiser",
+      "description": "Learn about Draivix Corporation, the AI-focused software company behind Aidvertaiser. Meet our leadership team, explore partnerships, and discover career opportunities."
+    },
+    "hero": {
+      "title1": "About",
+      "title2": "Draivix",
+      "subtitle": "Building AI-powered advertising tools that make every marketing team more productive. From campaign management to cross-platform analytics, we automate what matters most."
+    },
+    "toc": {
+      "company": "Company",
+      "leadership": "Leadership",
+      "vision": "Vision & Mission",
+      "partners": "Partners",
+      "careers": "Careers",
+      "events": "Events",
+      "stories": "Customer Stories",
+      "press": "Press & Media",
+      "contact": "Contact"
+    },
+    "company": {
+      "title": "The Company",
+      "p1": "Draivix Corporation is an AI-focused software company building tools that automate and optimize digital advertising at scale. Our flagship product, Aidvertaiser, brings AI-powered advertising management to marketing teams of every size through the Model Context Protocol.",
+      "p2": "Founded by David Strejc, Draivix is driven by a simple belief: managing advertising across multiple platforms should not require switching between dozens of dashboards. We combine the MCP protocol with deep platform integrations to give AI assistants full control over your advertising ecosystem.",
+      "aidvertaiserDesc": "AI-powered advertising MCP server. 180 tools across Google Ads, Meta Ads, GA4, Search Console, Matomo, and Bing Webmaster. Open source under MIT.",
+      "platformName": "Draivix Platform",
+      "platformDesc": "The broader Draivix ecosystem of AI-powered developer and marketing tools, infrastructure automation, and intelligent workflows designed for modern teams."
+    },
+    "leadership": {
+      "title": "Leadership",
+      "intro": "Draivix is led by engineers and marketers who believe AI should augment team capabilities, not replace them.",
+      "founderRole": "Founder & CEO",
+      "founderBio": "AI researcher and full-stack developer with deep expertise in advertising technology, API integrations, and developer tooling. David founded Draivix to bring AI-powered advertising management to every marketing team, combining the MCP protocol with comprehensive platform APIs."
+    },
+    "vision": {
+      "title": "Vision & Mission",
+      "missionLabel": "Our Mission",
+      "mission": "Make AI-powered advertising management accessible to every marketing team. Campaign optimization should not be a luxury reserved for companies with dedicated ad operations teams.",
+      "visionLabel": "Our Vision",
+      "vision": "A world where every marketing team has an AI co-pilot. Where campaign creation, budget optimization, and performance analysis happen through natural conversation. Where AI and human creativity work together to make advertising better."
+    },
+    "partners": {
+      "title": "Technology Partners",
+      "intro": "Aidvertaiser integrates with world-class advertising and analytics platforms. We build on official APIs to ensure reliable, secure, and compliant advertising management."
+    },
+    "careers": {
+      "title": "Join Us",
+      "intro": "We are always looking for passionate developers, marketers, and open source contributors who want to push the boundaries of AI-powered advertising tools.",
+      "benefit1Title": "Build Cutting-Edge Tools",
+      "benefit1Desc": "Work on AI-powered advertising tools that push the boundaries of what marketing technology can do.",
+      "benefit2Title": "Fully Remote",
+      "benefit2Desc": "Work from anywhere in the world. We are a distributed team that values output over office hours.",
+      "benefit3Title": "Open Source First",
+      "benefit3Desc": "Your work ships as open source. Contribute to the marketing community while building your career.",
+      "benefit4Title": "Move Fast",
+      "benefit4Desc": "Small team, big impact. Ship features weekly, not quarterly. Your ideas go from concept to production fast.",
+      "ossTitle": "Contribute to Aidvertaiser",
+      "ossDesc": "Aidvertaiser is open source under the MIT License. Contribute platform integrations, tools, or documentation. Every pull request makes the tool better for the entire community.",
+      "ossButton": "View on GitHub"
+    },
+    "events": {
+      "title": "Events",
+      "intro": "Join us at upcoming conferences, webinars, and community meetups where we demonstrate Aidvertaiser and discuss the future of AI-powered advertising."
+    },
+    "stories": {
+      "title": "Customer Stories",
+      "intro": "Marketing teams around the world use Aidvertaiser to manage advertising campaigns with AI. Here are some of their experiences.",
+      "quote1": "Aidvertaiser let us launch coordinated campaigns across Google and Meta in minutes instead of hours. The AI handles the repetitive setup while we focus on creative strategy.",
+      "author1": "Head of Performance Marketing",
+      "company1": "E-commerce Platform",
+      "quote2": "We integrated Aidvertaiser into our analytics workflow and now pull cross-platform reports with a single natural language command. It saved our team 15 hours per week.",
+      "author2": "Marketing Director",
+      "company2": "SaaS Startup",
+      "quote3": "The conversion tracking tools unified our pixel management across platforms. We caught attribution gaps we didn't know existed and improved ROAS by 23%.",
+      "author3": "Performance Marketing Lead",
+      "company3": "Digital Agency"
+    },
+    "press": {
+      "title": "Press & Media",
+      "intro": "For press inquiries, media resources, and company information, please reach out to our communications team.",
+      "inquiriesTitle": "Press Inquiries",
+      "inquiriesDesc": "For interviews, product reviews, and media coverage.",
+      "resourcesTitle": "Brand Resources",
+      "resourcesDesc": "Logos, screenshots, and company fact sheet for media use.",
+      "comingSoon": "Coming soon"
+    },
+    "investors": {
+      "title": "Investor Relations",
+      "desc": "Draivix Corporation is a privately held company. For investor inquiries and partnership opportunities, please contact us at investors@aidvertaiser.com."
+    },
+    "contact": {
+      "title": "Contact Us",
+      "intro": "Have questions about Aidvertaiser, want to discuss a partnership, or need enterprise support? We would love to hear from you.",
+      "emailLabel": "Email"
+    },
+    "cta": {
+      "title": "Start Managing Ads with AI",
+      "desc": "Install Aidvertaiser in seconds and connect your first platform. Open source, MIT licensed, forever free.",
+      "github": "View on GitHub"
+    }
+  }
+}
