@@ -1,7 +1,9 @@
-"""Google Search Console OAuth authentication handler.
+"""Google Tag Manager OAuth authentication handler.
 
-Reuses the same OAuth infrastructure as Google Analytics auth,
-with Search Console-specific scopes.
+Reuses the same OAuth infrastructure as other Google auth modules,
+with Tag Manager-specific scopes.
+
+Requires the "Tag Manager API" to be enabled in Google Cloud Console.
 """
 
 import os
@@ -27,20 +29,21 @@ from .oauth_server import (
 
 GOOGLE_AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth"
 GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token"
-SEARCHCONSOLE_SCOPES = [
-    "https://www.googleapis.com/auth/webmasters",
-    "https://www.googleapis.com/auth/siteverification",
-    "https://www.googleapis.com/auth/indexing",
+TAGMANAGER_SCOPES = [
+    "https://www.googleapis.com/auth/tagmanager.readonly",
+    "https://www.googleapis.com/auth/tagmanager.edit.containers",
+    "https://www.googleapis.com/auth/tagmanager.edit.containerversions",
+    "https://www.googleapis.com/auth/tagmanager.publish",
 ]
 
 
-class GoogleSearchConsoleAuth:
-    """Handles Google Search Console OAuth authentication with browser flow."""
+class GoogleTagManagerAuth:
+    """Handles Google Tag Manager OAuth authentication with browser flow."""
 
     def __init__(self, config_path: Optional[str] = None):
         self.config_path = config_path or os.environ.get(
-            "GOOGLE_SEARCHCONSOLE_CREDENTIALS",
-            str(Path.home() / "google-searchconsole.yaml"),
+            "GOOGLE_TAGMANAGER_CREDENTIALS",
+            str(Path.home() / "google-tagmanager.yaml"),
         )
         self._config = self._load_config()
         self._credentials: Optional[Credentials] = None
@@ -57,12 +60,12 @@ class GoogleSearchConsoleAuth:
         )
         if not os.path.exists(ads_config_path):
             raise FileNotFoundError(
-                f"No Search Console config at {self.config_path} "
+                f"No Tag Manager config at {self.config_path} "
                 f"and no Google Ads config at {ads_config_path}."
             )
 
         print(
-            f"[Search Console] Reading client credentials from {ads_config_path}",
+            f"[Tag Manager] Reading client credentials from {ads_config_path}",
             file=sys.stderr,
         )
         with open(ads_config_path, "r", encoding="utf-8") as f:
@@ -86,9 +89,21 @@ class GoogleSearchConsoleAuth:
     def client_secret(self) -> str:
         return self._config.get("client_secret", "")
 
+    @property
+    def default_account_id(self) -> Optional[str]:
+        """Get the default GTM account ID."""
+        aid = self._config.get("default_account_id")
+        return str(aid) if aid else None
+
+    @property
+    def default_container_id(self) -> Optional[str]:
+        """Get the default GTM container ID."""
+        cid = self._config.get("default_container_id")
+        return str(cid) if cid else None
+
     def get_credentials(self, force_refresh: bool = False) -> Credentials:
         if not force_refresh:
-            cached = load_token("google_searchconsole")
+            cached = load_token("google_tagmanager")
             if cached and cached.get("refresh_token"):
                 expiry = None
                 if cached.get("expiry"):
@@ -103,7 +118,7 @@ class GoogleSearchConsoleAuth:
                     token_uri=GOOGLE_TOKEN_URL,
                     client_id=self.client_id,
                     client_secret=self.client_secret,
-                    scopes=SEARCHCONSOLE_SCOPES,
+                    scopes=TAGMANAGER_SCOPES,
                     expiry=expiry,
                 )
 
@@ -111,9 +126,9 @@ class GoogleSearchConsoleAuth:
                     try:
                         self._credentials.refresh(Request())
                         self._save_credentials()
-                        print("[Search Console] Token refreshed", file=sys.stderr)
+                        print("[Tag Manager] Token refreshed", file=sys.stderr)
                     except Exception as e:
-                        print(f"[Search Console] Refresh failed: {e}", file=sys.stderr)
+                        print(f"[Tag Manager] Refresh failed: {e}", file=sys.stderr)
                         self._credentials = None
 
                 if self._credentials:
@@ -128,7 +143,7 @@ class GoogleSearchConsoleAuth:
         auth_params = {
             "client_id": self.client_id,
             "redirect_uri": redirect_uri,
-            "scope": " ".join(SEARCHCONSOLE_SCOPES),
+            "scope": " ".join(TAGMANAGER_SCOPES),
             "response_type": "code",
             "access_type": "offline",
             "prompt": "consent",
@@ -136,7 +151,7 @@ class GoogleSearchConsoleAuth:
         auth_url = GOOGLE_AUTH_URL + "?" + "&".join(f"{k}={v}" for k, v in auth_params.items())
 
         print("\n" + "=" * 60, file=sys.stderr)
-        print("[Search Console] Authentication required", file=sys.stderr)
+        print("[Tag Manager] Authentication required", file=sys.stderr)
         print("=" * 60, file=sys.stderr)
         print("Opening browser for authentication...", file=sys.stderr)
         print(f"If browser doesn't open, visit:\n{auth_url}", file=sys.stderr)
@@ -144,9 +159,9 @@ class GoogleSearchConsoleAuth:
 
         clear_tokens()
         if not open_auth_url(auth_url):
-            print("[Search Console] Please open the URL above in your browser", file=sys.stderr)
+            print("[Tag Manager] Please open the URL above in your browser", file=sys.stderr)
 
-        print("[Search Console] Waiting for authentication...", file=sys.stderr)
+        print("[Tag Manager] Waiting for authentication...", file=sys.stderr)
         timeout = 120
         for i in range(timeout):
             code = get_google_auth_code()
@@ -154,9 +169,9 @@ class GoogleSearchConsoleAuth:
                 break
             time.sleep(1)
             if i > 0 and i % 30 == 0:
-                print(f"[Search Console] Still waiting... ({timeout - i}s remaining)", file=sys.stderr)
+                print(f"[Tag Manager] Still waiting... ({timeout - i}s remaining)", file=sys.stderr)
         else:
-            raise TimeoutError("Google Search Console authentication timed out.")
+            raise TimeoutError("Google Tag Manager authentication timed out.")
 
         token_response = requests.post(
             GOOGLE_TOKEN_URL,
@@ -181,11 +196,11 @@ class GoogleSearchConsoleAuth:
             token_uri=GOOGLE_TOKEN_URL,
             client_id=self.client_id,
             client_secret=self.client_secret,
-            scopes=SEARCHCONSOLE_SCOPES,
+            scopes=TAGMANAGER_SCOPES,
         )
 
         self._save_credentials()
-        print("[Search Console] Authentication successful!", file=sys.stderr)
+        print("[Tag Manager] Authentication successful!", file=sys.stderr)
         return self._credentials
 
     def _save_credentials(self) -> None:
@@ -197,22 +212,22 @@ class GoogleSearchConsoleAuth:
             }
             if self._credentials.expiry:
                 token_data["expiry"] = self._credentials.expiry.timestamp()
-            save_token("google_searchconsole", token_data)
+            save_token("google_tagmanager", token_data)
 
     def invalidate(self) -> None:
         self._credentials = None
 
 
-_google_searchconsole_auth: Optional[GoogleSearchConsoleAuth] = None
+_google_tagmanager_auth: Optional[GoogleTagManagerAuth] = None
 
 
-def get_google_searchconsole_auth(config_path: Optional[str] = None) -> GoogleSearchConsoleAuth:
-    global _google_searchconsole_auth
-    if _google_searchconsole_auth is None:
-        _google_searchconsole_auth = GoogleSearchConsoleAuth(config_path)
-    return _google_searchconsole_auth
+def get_google_tagmanager_auth(config_path: Optional[str] = None) -> GoogleTagManagerAuth:
+    global _google_tagmanager_auth
+    if _google_tagmanager_auth is None:
+        _google_tagmanager_auth = GoogleTagManagerAuth(config_path)
+    return _google_tagmanager_auth
 
 
-def reset_google_searchconsole_auth() -> None:
-    global _google_searchconsole_auth
-    _google_searchconsole_auth = None
+def reset_google_tagmanager_auth() -> None:
+    global _google_tagmanager_auth
+    _google_tagmanager_auth = None

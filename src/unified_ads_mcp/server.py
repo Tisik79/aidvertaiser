@@ -31,6 +31,8 @@ mcp = FastMCP(
     - Google Search Console tools are prefixed with 'gsc_'
     - Matomo Analytics tools are prefixed with 'matomo_'
     - Bing Webmaster Tools are prefixed with 'bing_'
+    - PageSpeed Insights tools are prefixed with 'pagespeed_'
+    - Google Tag Manager tools are prefixed with 'gtm_'
 
     AUTHENTICATION:
     Authentication happens automatically via browser when needed.
@@ -99,6 +101,34 @@ mcp = FastMCP(
     - Use gsc_inspect_url to check indexing status of a specific URL
     - Use gsc_submit_sitemap to register sitemaps
 
+    PAGESPEED INSIGHTS:
+    - No config needed for basic usage (rate-limited without API key)
+    - Optionally set PAGESPEED_API_KEY env var or configure ~/pagespeed.yaml
+    - With API key: 25,000 requests/day
+    - Use pagespeed_analyze for full Lighthouse audit (scores + opportunities)
+    - Use pagespeed_compare for mobile vs desktop comparison
+    - Use pagespeed_core_web_vitals for Chrome UX Report field data
+
+    GOOGLE INDEXING API:
+    - Uses Search Console credentials (same OAuth flow)
+    - Requires 'Web Search Indexing API' enabled in Google Cloud Console
+    - Use gsc_submit_url_for_indexing to ping Google about new/updated URLs
+    - Use gsc_submit_urls_for_indexing for batch submissions
+    - Rate limit: ~200 requests/day per property
+    - After adding indexing scope, delete cached token to re-authenticate:
+      rm ~/.unified-ads-mcp/google_searchconsole_token.json
+
+    GOOGLE TAG MANAGER:
+    - Configure via GOOGLE_TAGMANAGER_CREDENTIALS env var or ~/google-tagmanager.yaml
+    - Falls back to ~/google-ads.yaml for client_id/client_secret
+    - Requires 'Tag Manager API' enabled in Google Cloud Console
+    - Set default_account_id and default_container_id in config
+    - Use gtm_list_accounts / gtm_list_containers to find IDs
+    - Use gtm_list_tags / gtm_create_tag to manage tags
+    - Use gtm_list_triggers / gtm_create_trigger to manage triggers
+    - Use gtm_create_version / gtm_publish_version to push changes live
+    - Always create a version and publish to make changes go live
+
     COMMON WORKFLOWS:
     1. Use tools directly (they use default account if configured)
     2. List campaigns with optional status filter
@@ -139,6 +169,12 @@ from .bing import analytics as bing_analytics  # noqa: E402, F401
 from .bing import crawl as bing_crawl  # noqa: E402, F401
 from .bing import keywords as bing_keywords  # noqa: E402, F401
 from .bing import links as bing_links  # noqa: E402, F401
+from .pagespeed import insights as pagespeed_insights  # noqa: E402, F401
+from .analytics import custom_dimensions as ga4_custom_dimensions  # noqa: E402, F401
+from .searchconsole import indexing as gsc_indexing  # noqa: E402, F401
+from .tagmanager import tags as gtm_tags  # noqa: E402, F401
+from .tagmanager import triggers as gtm_triggers  # noqa: E402, F401
+from .tagmanager import versions as gtm_versions  # noqa: E402, F401
 
 
 def main():

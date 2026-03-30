@@ -10,8 +10,10 @@ A unified MCP (Model Context Protocol) server for managing advertising, analytic
 | Meta Ads | `meta_` | OAuth (browser) |
 | Google Analytics (GA4) | `ga4_` | OAuth (browser) |
 | Google Search Console | `gsc_` | OAuth (browser) |
+| Google Tag Manager | `gtm_` | OAuth (browser) |
 | Matomo Analytics | `matomo_` | API token |
 | Bing Webmaster Tools | `bing_` | API key |
+| PageSpeed Insights | `pagespeed_` | API key (optional) |
 
 ## Installation
 
@@ -60,6 +62,37 @@ Or set `GOOGLE_ANALYTICS_CREDENTIALS` env var.
 ### Google Search Console
 
 Falls back to `~/google-ads.yaml` for client credentials (same Google Cloud project). Token cached at `~/.unified-ads-mcp/google_searchconsole_token.json`.
+
+Also provides access to the **Google Indexing API** for submitting URLs for indexing. Requires the **Web Search Indexing API** to be enabled in Google Cloud Console.
+
+### Google Tag Manager
+
+Create `~/google-tagmanager.yaml` or falls back to `~/google-ads.yaml` for client credentials:
+
+```yaml
+client_id: YOUR_CLIENT_ID
+client_secret: YOUR_CLIENT_SECRET
+default_account_id: YOUR_GTM_ACCOUNT_ID  # Optional
+default_container_id: YOUR_GTM_CONTAINER_ID  # Optional
+```
+
+Or set `GOOGLE_TAGMANAGER_CREDENTIALS` env var.
+
+Requires the **Tag Manager API** to be enabled in Google Cloud Console.
+
+Use `gtm_list_accounts` and `gtm_list_containers` to find your account and container IDs.
+
+### PageSpeed Insights
+
+No config needed for basic usage (rate-limited to ~5 req/min without API key).
+
+Create `~/pagespeed.yaml` for higher rate limits:
+
+```yaml
+api_key: YOUR_GOOGLE_API_KEY  # 25,000 requests/day
+```
+
+Or set `PAGESPEED_API_KEY` env var.
 
 ### Matomo Analytics
 
@@ -245,7 +278,7 @@ Add to `~/.claude/mcp_servers.json`:
 - `meta_create_offline_conversion_set` - Create offline conversion set
 - `meta_upload_offline_conversions` - Upload offline conversions
 
-### Google Analytics (`ga4_`) — 21 tools
+### Google Analytics (`ga4_`) — 26 tools
 
 **Accounts & Properties:**
 - `ga4_list_accounts` - List GA4 accounts
@@ -277,7 +310,13 @@ Add to `~/.claude/mcp_servers.json`:
 - `ga4_update_key_event` - Update key event settings
 - `ga4_delete_key_event` - Remove a key event
 
-### Google Search Console (`gsc_`) — 14 tools
+**Custom Dimensions:**
+- `ga4_list_custom_dimensions` - List all custom dimensions
+- `ga4_create_custom_dimension` - Create a custom dimension (e.g. page_type, content_category)
+- `ga4_update_custom_dimension` - Update display name or description
+- `ga4_archive_custom_dimension` - Archive (soft-delete) a custom dimension
+
+### Google Search Console (`gsc_`) — 18 tools
 
 **Sites:**
 - `gsc_list_sites` - List all registered sites
@@ -292,6 +331,11 @@ Add to `~/.claude/mcp_servers.json`:
 
 **URL Inspection:**
 - `gsc_inspect_url` - Check indexing status of a URL
+
+**Indexing API:**
+- `gsc_submit_url_for_indexing` - Submit a URL to Google for indexing/removal
+- `gsc_submit_urls_for_indexing` - Batch submit multiple URLs (~200/day limit)
+- `gsc_get_indexing_notification_status` - Check last indexing notification for a URL
 
 **Sitemaps:**
 - `gsc_list_sitemaps` - List submitted sitemaps
@@ -338,6 +382,36 @@ Add to `~/.claude/mcp_servers.json`:
 - `matomo_delete_goal` - Remove a goal
 - `matomo_get_goal_report` - Goal conversion report
 
+### Google Tag Manager (`gtm_`) — 14 tools
+
+**Accounts & Containers:**
+- `gtm_list_accounts` - List all GTM accounts
+- `gtm_list_containers` - List containers in an account
+- `gtm_list_workspaces` - List workspaces in a container
+
+**Tags:**
+- `gtm_list_tags` - List all tags in a workspace
+- `gtm_create_tag` - Create a tag (GA4 event, Google Ads conversion, custom HTML, etc.)
+- `gtm_update_tag` - Update tag settings
+- `gtm_delete_tag` - Remove a tag
+
+**Triggers:**
+- `gtm_list_triggers` - List all triggers in a workspace
+- `gtm_create_trigger` - Create a trigger (page view, click, custom event, etc.)
+- `gtm_update_trigger` - Update trigger settings
+- `gtm_delete_trigger` - Remove a trigger
+
+**Versions & Publishing:**
+- `gtm_list_versions` - List container version history
+- `gtm_create_version` - Create a version from current workspace state
+- `gtm_publish_version` - Publish a version (makes changes live on the website)
+
+### PageSpeed Insights (`pagespeed_`) — 3 tools
+
+- `pagespeed_analyze` - Full Lighthouse audit (scores, Core Web Vitals, opportunities)
+- `pagespeed_compare` - Mobile vs desktop side-by-side comparison
+- `pagespeed_core_web_vitals` - Chrome UX Report field data (LCP, INP, CLS, FCP, TTFB)
+
 ### Bing Webmaster Tools (`bing_`) — 21 tools
 
 **Sites:**
@@ -375,9 +449,24 @@ Add to `~/.claude/mcp_servers.json`:
 - `bing_get_link_counts` - Total inbound link counts
 - `bing_get_url_links` - Detailed inbound link list
 
+## Required Google Cloud APIs
+
+Enable these APIs in your [Google Cloud Console](https://console.cloud.google.com/apis/library) for the project matching your `client_id`:
+
+| API | Required for | Enable command |
+|-----|-------------|----------------|
+| Google Ads API | `google_*` tools | `gcloud services enable googleads.googleapis.com` |
+| Google Analytics Admin API | `ga4_*` tools | `gcloud services enable analyticsadmin.googleapis.com` |
+| Google Analytics Data API | `ga4_run_report`, `ga4_run_realtime_report` | `gcloud services enable analyticsdata.googleapis.com` |
+| Google Search Console API | `gsc_*` tools | `gcloud services enable searchconsole.googleapis.com` |
+| Web Search Indexing API | `gsc_submit_url_for_indexing` | `gcloud services enable indexing.googleapis.com` |
+| Tag Manager API | `gtm_*` tools | `gcloud services enable tagmanager.googleapis.com` |
+| Site Verification API | `gsc_verify_site`, `gsc_get_verification_token` | `gcloud services enable siteverification.googleapis.com` |
+| PageSpeed Insights API | `pagespeed_*` (optional, for higher rate limits) | `gcloud services enable pagespeedonline.googleapis.com` |
+
 ## Authentication Flow
 
-**OAuth platforms** (Google Ads, Meta, GA4, Search Console):
+**OAuth platforms** (Google Ads, Meta, GA4, Search Console, Tag Manager):
 
 1. Server starts a local OAuth callback server on `localhost:8888+`
 2. Browser opens automatically with the authentication URL
@@ -385,7 +474,16 @@ Add to `~/.claude/mcp_servers.json`:
 4. Token is captured and cached to `~/.unified-ads-mcp/`
 5. Tokens auto-refresh; Meta short-lived tokens are exchanged for long-lived (60 days)
 
-**API key/token platforms** (Matomo, Bing): No browser flow needed — credentials are read directly from YAML config.
+Each Google OAuth service uses separate tokens cached at:
+- `~/.unified-ads-mcp/google_ads_token.json`
+- `~/.unified-ads-mcp/google_analytics_token.json`
+- `~/.unified-ads-mcp/google_searchconsole_token.json`
+- `~/.unified-ads-mcp/google_tagmanager_token.json`
+- `~/.unified-ads-mcp/meta_token.json`
+
+To force re-authentication (e.g. after adding new OAuth scopes), delete the relevant token file.
+
+**API key/token platforms** (Matomo, Bing, PageSpeed): No browser flow needed — credentials are read directly from YAML config.
 
 ## License
 
