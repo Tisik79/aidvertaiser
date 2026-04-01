@@ -300,8 +300,9 @@ def google_create_campaign(
             "2840" (United States), "2826" (United Kingdom).
             Without this, ads show worldwide!
         language_ids: Optional list of language criterion IDs.
-            Common IDs: "1001" (Czech), "1000" (English), "1010" (German),
-            "1017" (Slovak).
+            Common IDs: "1021" (Czech), "1000" (English), "1001" (German),
+            "1033" (Slovak), "1002" (French), "1004" (Italian), "1003" (Spanish),
+            "1030" (Polish).
         login_customer_id: Optional MCC account ID if accessing through
             a manager account.
 
@@ -975,8 +976,8 @@ def google_set_campaign_languages(
     Args:
         campaign_id: The campaign ID to update.
         language_ids: List of language criterion IDs.
-            Common IDs: "1001" (Czech), "1000" (English), "1010" (German),
-            "1017" (Slovak), "1035" (French), "1030" (Italian), "1003" (Spanish),
+            Common IDs: "1021" (Czech), "1000" (English), "1001" (German),
+            "1033" (Slovak), "1002" (French), "1004" (Italian), "1003" (Spanish),
             "1030" (Polish).
         customer_id: The Google Ads customer ID. Uses default if not provided.
         replace_existing: If True (default), removes existing language criteria first.
