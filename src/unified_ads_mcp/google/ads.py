@@ -559,21 +559,17 @@ def google_set_demographic_exclusions(
             "INCOME_RANGE": "INCOME_RANGE",
         }
 
-        # Remove existing negative criteria for the same types
+        # Remove existing criteria (both negative and observation) for the same types.
+        # Non-negative (observation) criteria must be removed first, otherwise
+        # creating a negative criterion fails with CRITERION_ALREADY_EXISTS.
         if replace_existing and types_to_set:
             ga_service = client.get_service("GoogleAdsService")
-            type_filters = " OR ".join(
-                f"ad_group_criterion.type = '{type_to_gaql[t]}'"
-                for t in types_to_set if t in type_to_gaql
-            )
-            # GAQL doesn't support OR, use IN if all same field
             type_values = [f"'{type_to_gaql[t]}'" for t in types_to_set if t in type_to_gaql]
             query = f"""
                 SELECT ad_group_criterion.resource_name, ad_group_criterion.type
                 FROM ad_group_criterion
                 WHERE ad_group.id = {ad_group_id}
                   AND ad_group_criterion.type IN ({', '.join(type_values)})
-                  AND ad_group_criterion.negative = TRUE
             """
             response = ga_service.search_stream(
                 customer_id=customer_id, query=query
