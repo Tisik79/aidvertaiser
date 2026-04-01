@@ -153,6 +153,7 @@ from .analytics import properties as ga4_properties  # noqa: E402, F401
 from .analytics import data_streams as ga4_data_streams  # noqa: E402, F401
 from .analytics import reporting as ga4_reporting  # noqa: E402, F401
 from .analytics import key_events as ga4_key_events  # noqa: E402, F401
+from .analytics import measurement_protocol as ga4_measurement_protocol  # noqa: E402, F401
 from .searchconsole import sites as gsc_sites  # noqa: E402, F401
 from .searchconsole import analytics as gsc_analytics  # noqa: E402, F401
 from .searchconsole import sitemaps as gsc_sitemaps  # noqa: E402, F401

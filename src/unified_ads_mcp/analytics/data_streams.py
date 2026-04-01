@@ -14,7 +14,12 @@ from google.protobuf.field_mask_pb2 import FieldMask
 from mcp.server.fastmcp.exceptions import ToolError
 
 from ..server import mcp
-from .client import get_admin_client, resolve_property_id, format_property_name
+from .client import (
+    get_admin_client,
+    get_alpha_admin_client,
+    resolve_property_id,
+    format_property_name,
+)
 
 
 def _stream_to_dict(stream) -> dict[str, Any]:
@@ -391,3 +396,123 @@ def ga4_get_tracking_code(
         raise
     except GoogleAPICallError as e:
         raise ToolError(f"Failed to get tracking code: {e}") from e
+
+
+def _secret_to_dict(secret) -> dict[str, Any]:
+    """Convert a MeasurementProtocolSecret protobuf to a plain dictionary.
+
+    Args:
+        secret: A MeasurementProtocolSecret from the v1alpha Admin API.
+
+    Returns:
+        A dict with name, display_name, and secret_value fields.
+    """
+    return {
+        "name": secret.name,
+        "display_name": secret.display_name,
+        "secret_value": secret.secret_value,
+    }
+
+
+@mcp.tool()
+def ga4_list_measurement_protocol_secrets(
+    stream_name: str,
+) -> list[dict[str, Any]]:
+    """Lists all Measurement Protocol API secrets for a GA4 data stream.
+
+    Measurement Protocol secrets are used to authenticate server-side
+    event requests sent via ga4_send_measurement_protocol_event.
+
+    Args:
+        stream_name: Full resource name of the data stream,
+            e.g. "properties/123456/dataStreams/789".
+
+    Returns:
+        list[dict]: List of secrets, each containing:
+            - name: Full resource name
+              (e.g. "properties/123/dataStreams/456/measurementProtocolSecrets/789")
+            - display_name: Human-readable name for the secret
+            - secret_value: The actual API secret string to use
+              in Measurement Protocol requests
+
+    Raises:
+        ToolError: If the API request fails.
+    """
+    try:
+        client = get_alpha_admin_client()
+        secrets = client.list_measurement_protocol_secrets(parent=stream_name)
+        return [_secret_to_dict(secret) for secret in secrets]
+    except GoogleAPICallError as e:
+        raise ToolError(f"Failed to list measurement protocol secrets: {e}") from e
+
+
+@mcp.tool()
+def ga4_create_measurement_protocol_secret(
+    stream_name: str,
+    display_name: str,
+) -> dict[str, Any]:
+    """Creates a new Measurement Protocol API secret for a GA4 data stream.
+
+    The created secret can be used with ga4_send_measurement_protocol_event
+    and ga4_send_measurement_protocol_batch to send server-side events.
+
+    Each data stream can have up to 5 Measurement Protocol secrets.
+
+    Args:
+        stream_name: Full resource name of the data stream,
+            e.g. "properties/123456/dataStreams/789".
+        display_name: A human-readable name for the secret
+            (e.g. "Server-side tracking", "CRM integration").
+
+    Returns:
+        dict: Created secret with:
+            - name: Full resource name of the secret
+            - display_name: The name you provided
+            - secret_value: The generated API secret string.
+              IMPORTANT: Save this value securely — it cannot be
+              retrieved again after creation (only listed).
+
+    Raises:
+        ToolError: If the API request fails (e.g. limit exceeded).
+    """
+    try:
+        from google.analytics.admin_v1alpha.types import MeasurementProtocolSecret
+
+        client = get_alpha_admin_client()
+        secret = MeasurementProtocolSecret(display_name=display_name)
+        created = client.create_measurement_protocol_secret(
+            parent=stream_name,
+            measurement_protocol_secret=secret,
+        )
+        return _secret_to_dict(created)
+    except GoogleAPICallError as e:
+        raise ToolError(f"Failed to create measurement protocol secret: {e}") from e
+
+
+@mcp.tool()
+def ga4_delete_measurement_protocol_secret(
+    secret_name: str,
+) -> dict[str, Any]:
+    """Deletes a Measurement Protocol API secret.
+
+    After deletion, any server-side tracking using this secret will
+    stop working. This action cannot be undone.
+
+    Args:
+        secret_name: Full resource name of the secret,
+            e.g. "properties/123/dataStreams/456/measurementProtocolSecrets/789".
+
+    Returns:
+        dict: Deletion confirmation with:
+            - status: "deleted"
+            - name: The resource name of the deleted secret
+
+    Raises:
+        ToolError: If the secret is not found or API request fails.
+    """
+    try:
+        client = get_alpha_admin_client()
+        client.delete_measurement_protocol_secret(name=secret_name)
+        return {"status": "deleted", "name": secret_name}
+    except GoogleAPICallError as e:
+        raise ToolError(f"Failed to delete measurement protocol secret: {e}") from e

@@ -1,6 +1,24 @@
 """Google Tag Manager tag management tools."""
 
+import json
 from typing import Any, Optional
+
+
+def _coerce_list(value: Any) -> list[str]:
+    """Coerce a value to list[str]. Handles JSON strings from MCP transport."""
+    if isinstance(value, list):
+        return [str(v) for v in value]
+    if isinstance(value, str):
+        value = value.strip()
+        if value.startswith("["):
+            try:
+                parsed = json.loads(value)
+                if isinstance(parsed, list):
+                    return [str(v) for v in parsed]
+            except json.JSONDecodeError:
+                pass
+        return [v.strip() for v in value.split(",") if v.strip()]
+    raise ValueError(f"Cannot coerce {type(value).__name__} to list[str]")
 
 from mcp.server.fastmcp.exceptions import ToolError
 
@@ -180,11 +198,11 @@ def gtm_create_tag(
     name: str,
     tag_type: str,
     parameter: list[dict[str, Any]],
-    firing_trigger_id: list[str],
+    firing_trigger_id: Any,
     account_id: Optional[str] = None,
     container_id: Optional[str] = None,
     workspace_id: str = "Default Workspace",
-    blocking_trigger_id: Optional[list[str]] = None,
+    blocking_trigger_id: Optional[Any] = None,
     paused: bool = False,
 ) -> dict[str, Any]:
     """Creates a new tag in a GTM workspace.
@@ -216,6 +234,9 @@ def gtm_create_tag(
     Returns:
         dict: Created tag details.
     """
+    firing_trigger_id = _coerce_list(firing_trigger_id)
+    if blocking_trigger_id is not None:
+        blocking_trigger_id = _coerce_list(blocking_trigger_id)
     try:
         workspace_path = resolve_workspace_path(account_id, container_id, workspace_id)
         service = get_tagmanager_service()
@@ -245,8 +266,8 @@ def gtm_update_tag(
     tag_path: str,
     name: Optional[str] = None,
     parameter: Optional[list[dict[str, Any]]] = None,
-    firing_trigger_id: Optional[list[str]] = None,
-    blocking_trigger_id: Optional[list[str]] = None,
+    firing_trigger_id: Optional[Any] = None,
+    blocking_trigger_id: Optional[Any] = None,
     paused: Optional[bool] = None,
 ) -> dict[str, Any]:
     """Updates an existing tag in a GTM workspace.
@@ -263,6 +284,10 @@ def gtm_update_tag(
     Returns:
         dict: Updated tag details.
     """
+    if firing_trigger_id is not None:
+        firing_trigger_id = _coerce_list(firing_trigger_id)
+    if blocking_trigger_id is not None:
+        blocking_trigger_id = _coerce_list(blocking_trigger_id)
     try:
         service = get_tagmanager_service()
 

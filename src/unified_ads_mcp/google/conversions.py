@@ -4,7 +4,25 @@ This module provides MCP tools for managing conversion actions, uploading
 offline conversions, and configuring campaign conversion goals.
 """
 
+import json
 from typing import Any, Optional
+
+
+def _coerce_list(value: Any) -> list[str]:
+    """Coerce a value to list[str]. Handles JSON strings from MCP transport."""
+    if isinstance(value, list):
+        return [str(v) for v in value]
+    if isinstance(value, str):
+        value = value.strip()
+        if value.startswith("["):
+            try:
+                parsed = json.loads(value)
+                if isinstance(parsed, list):
+                    return [str(v) for v in parsed]
+            except json.JSONDecodeError:
+                pass
+        return [v.strip() for v in value.split(",") if v.strip()]
+    raise ValueError(f"Cannot coerce {type(value).__name__} to list[str]")
 
 from google.ads.googleads.errors import GoogleAdsException
 from mcp.server.fastmcp.exceptions import ToolError
@@ -495,8 +513,11 @@ def google_update_conversion_action(
             )
             field_mask.append("attribution_model_settings.attribution_model")
         if include_in_conversions is not None:
-            conversion_action.include_in_conversions_metric = include_in_conversions
-            field_mask.append("include_in_conversions_metric")
+            # NOTE: include_in_conversions_metric is READ-ONLY since API v15+.
+            # Use primary_for_goal instead, and set CustomerConversionGoal.biddable
+            # via google_update_customer_conversion_goal.
+            conversion_action.primary_for_goal = include_in_conversions
+            field_mask.append("primary_for_goal")
 
         if not field_mask:
             raise ToolError("No fields to update. Provide at least one field.")
@@ -908,7 +929,7 @@ def google_upload_enhanced_conversions(
 @mcp.tool()
 def google_set_campaign_conversion_goal(
     campaign_id: str,
-    conversion_action_ids: list[str],
+    conversion_action_ids: Any,
     customer_id: Optional[str] = None,
     login_customer_id: Optional[str] = None,
 ) -> dict[str, Any]:
@@ -931,6 +952,8 @@ def google_set_campaign_conversion_goal(
     Raises:
         ToolError: If the API request fails.
     """
+    conversion_action_ids = _coerce_list(conversion_action_ids)
+
     try:
         client = get_google_ads_client(login_customer_id=login_customer_id)
         customer_id = resolve_customer_id(customer_id)
@@ -987,9 +1010,24 @@ def google_set_campaign_conversion_goal(
         for action_id, details in action_details.items():
             target_keys.add((details["category"], details["origin"]))
 
+        # Build enum name maps for resource name construction
+        category_enum = client.enums.ConversionActionCategoryEnum.ConversionActionCategory
+        origin_enum = client.enums.ConversionOriginEnum.ConversionOrigin
+        category_names = {v.number: v.name for v in category_enum.DESCRIPTOR.values}
+        origin_names = {v.number: v.name for v in origin_enum.DESCRIPTOR.values}
+
         for key, goal in existing_goals.items():
+            cat_name = category_names.get(goal.category, str(goal.category))
+            origin_name = origin_names.get(goal.origin, str(goal.origin))
+            # Skip unresolvable enum values (UNKNOWN/UNSPECIFIED)
+            if cat_name in ("UNKNOWN", "UNSPECIFIED") or origin_name in ("UNKNOWN", "UNSPECIFIED"):
+                continue
             operation = client.get_type("CampaignConversionGoalOperation")
             update_goal = operation.update
+            update_goal.resource_name = (
+                f"customers/{customer_id}/campaignConversionGoals/"
+                f"{campaign_id}~{cat_name}~{origin_name}"
+            )
             update_goal.campaign = f"customers/{customer_id}/campaigns/{campaign_id}"
             update_goal.category = goal.category
             update_goal.origin = goal.origin
@@ -1015,6 +1053,128 @@ def google_set_campaign_conversion_goal(
             ],
             "total_goals_updated": len(operations),
             "status": "configured",
+        }
+
+    except GoogleAdsException as e:
+        raise ToolError(format_error(e)) from e
+
+
+@mcp.tool()
+def google_list_customer_conversion_goals(
+    customer_id: Optional[str] = None,
+    login_customer_id: Optional[str] = None,
+) -> list[dict[str, Any]]:
+    """Lists all customer conversion goals for the account.
+
+    Customer conversion goals control which conversion action categories
+    are used for bidding (Smart Bidding optimization). Each goal is a
+    category+origin pair (e.g. SUBMIT_LEAD_FORM~WEBSITE).
+
+    A conversion action is used for bidding when BOTH:
+    1. Its category+origin goal has biddable=true (this tool)
+    2. The action itself has primary_for_goal=true (google_update_conversion_action)
+
+    Args:
+        customer_id: Google Ads customer ID.
+        login_customer_id: Optional MCC account ID.
+
+    Returns:
+        list[dict]: Goals with category, origin, biddable status.
+    """
+    try:
+        client = get_google_ads_client(login_customer_id=login_customer_id)
+        customer_id = resolve_customer_id(customer_id)
+        if not customer_id:
+            raise ToolError("No customer_id provided and no default configured")
+
+        query = """
+            SELECT
+                customer_conversion_goal.category,
+                customer_conversion_goal.origin,
+                customer_conversion_goal.biddable
+            FROM customer_conversion_goal
+        """
+
+        ga_service = client.get_service("GoogleAdsService")
+        response = ga_service.search_stream(
+            customer_id=customer_id, query=query,
+        )
+
+        results = []
+        for batch in response:
+            for row in batch.results:
+                goal = row.customer_conversion_goal
+                cat = get_enum_name(client, "ConversionActionCategoryEnum", goal.category)
+                orig = get_enum_name(client, "ConversionOriginEnum", goal.origin)
+                results.append({
+                    "category": cat,
+                    "origin": orig,
+                    "biddable": goal.biddable,
+                    "resource_name": f"customers/{customer_id}/customerConversionGoals/{cat}~{orig}",
+                })
+
+        return results
+
+    except GoogleAdsException as e:
+        raise ToolError(format_error(e)) from e
+
+
+@mcp.tool()
+def google_update_customer_conversion_goal(
+    category: str,
+    origin: str,
+    biddable: bool,
+    customer_id: Optional[str] = None,
+    login_customer_id: Optional[str] = None,
+) -> dict[str, Any]:
+    """Updates a customer conversion goal's biddable status.
+
+    This controls whether conversion actions in a category+origin pair
+    are used for Smart Bidding. Use with google_update_conversion_action
+    (include_in_conversions=true) to make specific actions primary.
+
+    Common categories: SUBMIT_LEAD_FORM, PURCHASE, SIGNUP, CONTACT,
+        PAGE_VIEW, ENGAGEMENT, PHONE_CALL_LEAD, DEFAULT
+    Common origins: WEBSITE, APP, GOOGLE_HOSTED, CALL_FROM_ADS
+
+    Args:
+        category: Conversion action category (e.g. "SUBMIT_LEAD_FORM").
+        origin: Conversion origin (e.g. "WEBSITE").
+        biddable: Whether to use this goal for Smart Bidding.
+        customer_id: Google Ads customer ID.
+        login_customer_id: Optional MCC account ID.
+
+    Returns:
+        dict: Updated goal with category, origin, biddable, status.
+    """
+    try:
+        client = get_google_ads_client(login_customer_id=login_customer_id)
+        customer_id = resolve_customer_id(customer_id)
+        if not customer_id:
+            raise ToolError("No customer_id provided and no default configured")
+
+        service = client.get_service("CustomerConversionGoalService")
+        operation = client.get_type("CustomerConversionGoalOperation")
+        goal = operation.update
+
+        goal.resource_name = (
+            f"customers/{customer_id}/customerConversionGoals/"
+            f"{category}~{origin}"
+        )
+        goal.biddable = biddable
+        operation.update_mask.paths.append("biddable")
+
+        response = service.mutate_customer_conversion_goals(
+            customer_id=customer_id,
+            operations=[operation],
+        )
+
+        return {
+            "resource_name": response.results[0].resource_name,
+            "category": category,
+            "origin": origin,
+            "biddable": biddable,
+            "status": "updated",
         }
 
     except GoogleAdsException as e:

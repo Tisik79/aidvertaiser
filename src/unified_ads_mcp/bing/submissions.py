@@ -1,6 +1,24 @@
 """Bing Webmaster Tools URL Submission."""
 
-from typing import Optional
+import json
+from typing import Any, Optional
+
+
+def _coerce_list(value: Any) -> list[str]:
+    """Coerce a value to list[str]. Handles JSON strings from MCP transport."""
+    if isinstance(value, list):
+        return [str(v) for v in value]
+    if isinstance(value, str):
+        value = value.strip()
+        if value.startswith("["):
+            try:
+                parsed = json.loads(value)
+                if isinstance(parsed, list):
+                    return [str(v) for v in parsed]
+            except json.JSONDecodeError:
+                pass
+        return [v.strip() for v in value.split(",") if v.strip()]
+    raise ValueError(f"Cannot coerce {type(value).__name__} to list[str]")
 
 from mcp.server.fastmcp.exceptions import ToolError
 
@@ -46,7 +64,7 @@ def bing_submit_url(url: str, site_url: Optional[str] = None) -> dict:
 
 @mcp.tool()
 def bing_submit_url_batch(
-    url_list: list[str], site_url: Optional[str] = None
+    url_list: Any, site_url: Optional[str] = None
 ) -> dict:
     """Submits a batch of URLs to Bing for crawling and indexing.
 
@@ -63,6 +81,8 @@ def bing_submit_url_batch(
     Returns:
         dict: Success confirmation with count of submitted URLs.
     """
+    url_list = _coerce_list(url_list)
+
     try:
         if len(url_list) > 500:
             raise ToolError(

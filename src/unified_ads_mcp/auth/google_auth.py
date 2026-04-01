@@ -44,6 +44,8 @@ GOOGLE_AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth"
 GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token"
 GOOGLE_ADS_SCOPE = "https://www.googleapis.com/auth/adwords"
 
+from ..config import resolve_config_path
+
 
 class GoogleAdsAuth:
     """Handles Google Ads OAuth authentication with browser flow.

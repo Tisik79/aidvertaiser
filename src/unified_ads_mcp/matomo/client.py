@@ -16,9 +16,8 @@ from typing import Any, Optional
 import httpx
 import yaml
 
-_CONFIG_PATH = os.environ.get(
-    "MATOMO_CREDENTIALS", os.path.expanduser("~/matomo.yaml")
-)
+from ..config import resolve_config_path
+_CONFIG_PATH = resolve_config_path("matomo.yaml", "MATOMO_CREDENTIALS")
 
 _config: Optional[dict] = None
 _client: Optional[httpx.Client] = None

@@ -61,13 +61,15 @@ class OAuthCallbackHandler(BaseHTTPRequestHandler):
             try:
                 data = json.loads(body)
                 if "access_token" in data:
-                    _tokens["meta"] = {
+                    token_data = {
                         "access_token": data["access_token"],
                         "expires_in": data.get("expires_in", 3600),
                         "created_at": int(time.time()),
                     }
+                    _tokens["meta"] = token_data
+                    save_token("meta", token_data)
                     self._send_json({"status": "success"})
-                    print("[OAuth] Meta token received", file=sys.stderr)
+                    print("[OAuth] Meta token received and saved", file=sys.stderr)
                 else:
                     self._send_json(
                         {"status": "error", "message": "No token in request"}
@@ -104,9 +106,48 @@ class OAuthCallbackHandler(BaseHTTPRequestHandler):
             )
 
     def _handle_meta_callback(self, parsed) -> None:
-        """Handle Meta OAuth callback (token already extracted by JS)."""
-        # This endpoint is called by the JS in _serve_meta_fragment_handler
-        pass
+        """Handle Meta OAuth callback with token or code in query params.
+
+        This handles two cases:
+        1. Token passed as query param (rare, but possible)
+        2. Authorization code passed as query param (code flow)
+        """
+        params = parse_qs(parsed.query)
+
+        if "access_token" in params:
+            # Token directly in query params
+            token_data = {
+                "access_token": params["access_token"][0],
+                "expires_in": int(params.get("expires_in", [3600])[0]),
+                "created_at": int(time.time()),
+            }
+            _tokens["meta"] = token_data
+            save_token("meta", token_data)
+            print("[OAuth] Meta token received via query params", file=sys.stderr)
+            self._send_success_page(
+                "Meta Ads Authentication Successful",
+                "Your Meta Ads account has been connected. You can close this window.",
+            )
+        elif "code" in params:
+            # Authorization code flow - store code for exchange
+            _tokens["meta_code"] = params["code"][0]
+            print("[OAuth] Meta authorization code received", file=sys.stderr)
+            self._send_success_page(
+                "Meta Ads Authentication Successful",
+                "Your Meta Ads account has been connected. You can close this window.",
+            )
+        elif "error" in params:
+            error = params.get("error", ["Unknown error"])[0]
+            error_desc = params.get("error_description", [""])[0]
+            self._send_error_page(
+                "Meta Ads Authentication Failed",
+                f"Error: {error}. {error_desc}",
+            )
+        else:
+            self._send_error_page(
+                "Meta Ads Authentication Failed",
+                "No token or authorization code received.",
+            )
 
     def _serve_meta_fragment_handler(self) -> None:
         """Serve HTML page that extracts token from URL fragment.

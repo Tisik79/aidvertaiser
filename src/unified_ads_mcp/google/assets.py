@@ -7,8 +7,26 @@ automatically created asset management.
 """
 
 import base64
+import json
 import os
 from typing import Any, Optional
+
+
+def _coerce_list(value: Any) -> list[str]:
+    """Coerce a value to list[str]. Handles JSON strings from MCP transport."""
+    if isinstance(value, list):
+        return [str(v) for v in value]
+    if isinstance(value, str):
+        value = value.strip()
+        if value.startswith("["):
+            try:
+                parsed = json.loads(value)
+                if isinstance(parsed, list):
+                    return [str(v) for v in parsed]
+            except json.JSONDecodeError:
+                pass
+        return [v.strip() for v in value.split(",") if v.strip()]
+    raise ValueError(f"Cannot coerce {type(value).__name__} to list[str]")
 
 from google.ads.googleads.errors import GoogleAdsException
 from mcp.server.fastmcp.exceptions import ToolError
@@ -267,8 +285,8 @@ def google_create_image_asset(
 
 @mcp.tool()
 def google_create_text_assets_batch(
-    headlines: list[str],
-    descriptions: list[str],
+    headlines: Any,
+    descriptions: Any,
     customer_id: Optional[str] = None,
     login_customer_id: Optional[str] = None,
 ) -> dict[str, Any]:
@@ -294,6 +312,9 @@ def google_create_text_assets_batch(
     Raises:
         ToolError: If the API request fails or validation fails.
     """
+    headlines = _coerce_list(headlines)
+    descriptions = _coerce_list(descriptions)
+
     try:
         # Validate inputs
         if len(headlines) < 3:

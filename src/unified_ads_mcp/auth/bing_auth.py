@@ -19,7 +19,8 @@ from typing import Optional
 
 import yaml
 
-DEFAULT_CREDENTIALS_PATH = os.path.expanduser("~/bing-webmaster.yaml")
+from ..config import resolve_config_path
+DEFAULT_CREDENTIALS_PATH = resolve_config_path("bing-webmaster.yaml", "BING_WEBMASTER_CREDENTIALS")
 
 
 class BingWebmasterAuth:

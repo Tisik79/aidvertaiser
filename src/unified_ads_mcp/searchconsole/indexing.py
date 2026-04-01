@@ -10,7 +10,25 @@ Console property. Google may prioritize URLs with supported structured data.
 Requires the "Web Search Indexing API" to be enabled in Google Cloud Console.
 """
 
+import json
 from typing import Any
+
+
+def _coerce_list(value: Any) -> list[str]:
+    """Coerce a value to list[str]. Handles JSON strings from MCP transport."""
+    if isinstance(value, list):
+        return [str(v) for v in value]
+    if isinstance(value, str):
+        value = value.strip()
+        if value.startswith("["):
+            try:
+                parsed = json.loads(value)
+                if isinstance(parsed, list):
+                    return [str(v) for v in parsed]
+            except json.JSONDecodeError:
+                pass
+        return [v.strip() for v in value.split(",") if v.strip()]
+    raise ValueError(f"Cannot coerce {type(value).__name__} to list[str]")
 
 from mcp.server.fastmcp.exceptions import ToolError
 
@@ -68,7 +86,7 @@ def gsc_submit_url_for_indexing(
 
 @mcp.tool()
 def gsc_submit_urls_for_indexing(
-    urls: list[str],
+    urls: Any,
     action: str = "URL_UPDATED",
 ) -> dict[str, Any]:
     """Submits multiple URLs to Google for indexing or removal.
@@ -93,6 +111,8 @@ def gsc_submit_urls_for_indexing(
     Raises:
         ToolError: If the action is invalid.
     """
+    urls = _coerce_list(urls)
+
     if action not in ("URL_UPDATED", "URL_DELETED"):
         raise ToolError("action must be 'URL_UPDATED' or 'URL_DELETED'")
 

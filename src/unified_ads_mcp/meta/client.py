@@ -31,7 +31,8 @@ from ..config import only_default_account_enabled
 META_GRAPH_API_VERSION = "v22.0"
 META_GRAPH_API_BASE = f"https://graph.facebook.com/{META_GRAPH_API_VERSION}"
 USER_AGENT = "unified-ads-mcp/1.0"
-DEFAULT_CREDENTIALS_PATH = os.path.expanduser("~/meta-ads.yaml")
+from ..config import resolve_config_path
+DEFAULT_CREDENTIALS_PATH = resolve_config_path("meta-ads.yaml", "META_ADS_CREDENTIALS")
 
 
 def get_default_account_id() -> Optional[str]:

@@ -12,6 +12,9 @@ Example:
 import sys
 from typing import Optional
 
+from google.analytics.admin_v1alpha import (
+    AnalyticsAdminServiceClient as AlphaAdminServiceClient,
+)
 from google.analytics.admin_v1beta import AnalyticsAdminServiceClient
 from google.analytics.data_v1beta import BetaAnalyticsDataClient
 
@@ -52,9 +55,25 @@ class GoogleAnalyticsClientFactory:
             )
             raise
 
-    def get_data_client(
+    def get_alpha_admin_client(
         self, force_refresh: bool = False
-    ) -> BetaAnalyticsDataClient:
+    ) -> AlphaAdminServiceClient:
+        """Get a configured Google Analytics Admin API v1alpha client.
+
+        The v1alpha client provides access to features not yet in v1beta,
+        such as Measurement Protocol secret management.
+        """
+        credentials = self.auth.get_credentials(force_refresh=force_refresh)
+        try:
+            return AlphaAdminServiceClient(credentials=credentials)
+        except Exception as e:
+            print(
+                f"[Google Analytics] Alpha admin client creation failed: {e}",
+                file=sys.stderr,
+            )
+            raise
+
+    def get_data_client(self, force_refresh: bool = False) -> BetaAnalyticsDataClient:
         """Get a configured Google Analytics Data API client."""
         credentials = self.auth.get_credentials(force_refresh=force_refresh)
         try:
@@ -79,6 +98,20 @@ def get_admin_client(
     if _factory is None:
         _factory = GoogleAnalyticsClientFactory()
     return _factory.get_admin_client(force_refresh=force_refresh)
+
+
+def get_alpha_admin_client(
+    force_refresh: bool = False,
+) -> AlphaAdminServiceClient:
+    """Get a configured Google Analytics Admin API v1alpha client.
+
+    The v1alpha client provides access to features not yet in v1beta,
+    such as Measurement Protocol secret management.
+    """
+    global _factory
+    if _factory is None:
+        _factory = GoogleAnalyticsClientFactory()
+    return _factory.get_alpha_admin_client(force_refresh=force_refresh)
 
 
 def get_data_client(

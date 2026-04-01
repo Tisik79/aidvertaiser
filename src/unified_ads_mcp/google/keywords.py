@@ -4,7 +4,25 @@ This module provides MCP tools for managing Google Ads keywords including
 listing, adding, updating, and removing keywords within ad groups.
 """
 
+import json
 from typing import Any, Optional
+
+
+def _coerce_list(value: Any) -> list[str]:
+    """Coerce a value to list[str]. Handles JSON strings from MCP transport."""
+    if isinstance(value, list):
+        return [str(v) for v in value]
+    if isinstance(value, str):
+        value = value.strip()
+        if value.startswith("["):
+            try:
+                parsed = json.loads(value)
+                if isinstance(parsed, list):
+                    return [str(v) for v in parsed]
+            except json.JSONDecodeError:
+                pass
+        return [v.strip() for v in value.split(",") if v.strip()]
+    raise ValueError(f"Cannot coerce {type(value).__name__} to list[str]")
 
 from google.ads.googleads.errors import GoogleAdsException
 from mcp.server.fastmcp.exceptions import ToolError
@@ -271,7 +289,7 @@ def google_get_keyword(
 @mcp.tool()
 def google_add_keywords(
     ad_group_id: str,
-    keywords: list[str],
+    keywords: Any,
     customer_id: Optional[str] = None,
     match_type: str = "BROAD",
     cpc_bid: Optional[float] = None,
@@ -302,6 +320,7 @@ def google_add_keywords(
     Raises:
         ToolError: If the API request fails.
     """
+    keywords = _coerce_list(keywords)
     if not keywords:
         raise ToolError("At least one keyword is required")
 
@@ -492,7 +511,7 @@ def google_remove_keyword(
 @mcp.tool()
 def google_add_negative_keywords(
     ad_group_id: str,
-    keywords: list[str],
+    keywords: Any,
     customer_id: Optional[str] = None,
     match_type: str = "BROAD",
     login_customer_id: Optional[str] = None,
@@ -521,6 +540,7 @@ def google_add_negative_keywords(
     Raises:
         ToolError: If the API request fails.
     """
+    keywords = _coerce_list(keywords)
     if not keywords:
         raise ToolError("At least one negative keyword is required")
 
@@ -720,7 +740,7 @@ def google_remove_negative_keyword(
 @mcp.tool()
 def google_add_campaign_negative_keywords(
     campaign_id: str,
-    keywords: list[str],
+    keywords: Any,
     customer_id: Optional[str] = None,
     match_type: str = "BROAD",
     login_customer_id: Optional[str] = None,
@@ -751,6 +771,7 @@ def google_add_campaign_negative_keywords(
     Raises:
         ToolError: If the API request fails.
     """
+    keywords = _coerce_list(keywords)
     if not keywords:
         raise ToolError("At least one negative keyword is required")
 
@@ -921,6 +942,110 @@ def google_remove_campaign_negative_keyword(
         return {
             "keyword_resource_name": response.results[0].resource_name,
             "status": "removed",
+        }
+
+    except GoogleAdsException as e:
+        raise ToolError(format_error(e)) from e
+
+
+@mcp.tool()
+def google_bulk_update_keywords(
+    updates: list[dict[str, Any]],
+    customer_id: Optional[str] = None,
+    login_customer_id: Optional[str] = None,
+) -> dict[str, Any]:
+    """Bulk update keywords in a single API call (up to 5000 operations).
+
+    This is much more efficient than calling google_update_keyword repeatedly.
+    All updates are sent in one mutate request.
+
+    Args:
+        updates: List of update dicts. Each dict must contain:
+            - ad_group_id (str): The ad group ID containing the keyword.
+            - keyword_id (str): The keyword criterion ID to update.
+            And at least one of:
+            - status (str): New status - ENABLED, PAUSED, or REMOVED.
+            - cpc_bid (float): New CPC bid in account currency (e.g., 1.50).
+        customer_id: The Google Ads customer ID (digits only, no dashes).
+            Uses default from config if not provided.
+        login_customer_id: Optional MCC account ID if accessing through
+            a manager account.
+
+    Returns:
+        dict: Bulk update results:
+            - keywords_updated: Number of keywords successfully updated
+            - resource_names: List of updated keyword resource names
+            - status: "updated"
+
+    Raises:
+        ToolError: If updates list is empty, missing required fields,
+            or the API request fails.
+    """
+    if not updates:
+        raise ToolError("At least one update is required")
+    if len(updates) > 5000:
+        raise ToolError("Maximum 5000 updates per call")
+
+    try:
+        client = get_google_ads_client(login_customer_id=login_customer_id)
+        customer_id = resolve_customer_id(customer_id)
+        if not customer_id:
+            raise ToolError("No customer_id provided and no default configured")
+
+        ad_group_criterion_service = client.get_service("AdGroupCriterionService")
+        operations = []
+
+        for i, update in enumerate(updates):
+            ad_group_id = update.get("ad_group_id")
+            keyword_id = update.get("keyword_id")
+            if not ad_group_id or not keyword_id:
+                raise ToolError(
+                    f"Update at index {i} missing required 'ad_group_id' "
+                    f"or 'keyword_id'"
+                )
+
+            new_status = update.get("status")
+            new_cpc_bid = update.get("cpc_bid")
+
+            if new_status is None and new_cpc_bid is None:
+                raise ToolError(
+                    f"Update at index {i} must include at least one of "
+                    f"'status' or 'cpc_bid'"
+                )
+
+            operation = client.get_type("AdGroupCriterionOperation")
+            criterion = operation.update
+            criterion.resource_name = (
+                f"customers/{customer_id}/adGroupCriteria/"
+                f"{ad_group_id}~{keyword_id}"
+            )
+
+            field_mask: list[str] = []
+
+            if new_status is not None:
+                criterion.status = get_enum_value(
+                    client, "AdGroupCriterionStatusEnum", new_status
+                )
+                field_mask.append("status")
+
+            if new_cpc_bid is not None:
+                criterion.cpc_bid_micros = currency_to_micros(new_cpc_bid)
+                field_mask.append("cpc_bid_micros")
+
+            operation.update_mask.paths.extend(field_mask)
+            operations.append(operation)
+
+        response = ad_group_criterion_service.mutate_ad_group_criteria(
+            customer_id=customer_id,
+            operations=operations,
+        )
+
+        resource_names = [result.resource_name for result in response.results]
+
+        return {
+            "keywords_updated": len(resource_names),
+            "resource_names": resource_names,
+            "status": "updated",
         }
 
     except GoogleAdsException as e:

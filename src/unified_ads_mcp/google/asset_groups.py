@@ -15,7 +15,25 @@ Asset Groups are created using atomic bulk mutate operations to ensure
 all required components are created together.
 """
 
+import json
 from typing import Any, Optional
+
+
+def _coerce_list(value: Any) -> list[str]:
+    """Coerce a value to list[str]. Handles JSON strings from MCP transport."""
+    if isinstance(value, list):
+        return [str(v) for v in value]
+    if isinstance(value, str):
+        value = value.strip()
+        if value.startswith("["):
+            try:
+                parsed = json.loads(value)
+                if isinstance(parsed, list):
+                    return [str(v) for v in parsed]
+            except json.JSONDecodeError:
+                pass
+        return [v.strip() for v in value.split(",") if v.strip()]
+    raise ValueError(f"Cannot coerce {type(value).__name__} to list[str]")
 
 from google.ads.googleads.errors import GoogleAdsException
 from mcp.server.fastmcp.exceptions import ToolError
@@ -229,8 +247,8 @@ def google_create_asset_group(
     campaign_id: str,
     name: str,
     final_url: str,
-    headlines: list[str],
-    descriptions: list[str],
+    headlines: Any,
+    descriptions: Any,
     customer_id: Optional[str] = None,
     business_name: Optional[str] = None,
     path1: Optional[str] = None,
@@ -268,6 +286,9 @@ def google_create_asset_group(
     Raises:
         ToolError: If validation fails or API request fails.
     """
+    headlines = _coerce_list(headlines)
+    descriptions = _coerce_list(descriptions)
+
     try:
         # Validate inputs
         if len(headlines) < 3:

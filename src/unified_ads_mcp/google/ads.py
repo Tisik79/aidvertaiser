@@ -4,7 +4,25 @@ This module provides MCP tools for managing Google Ads including
 listing, creating, updating, and deleting ads within ad groups.
 """
 
+import json
 from typing import Any, Optional
+
+
+def _coerce_list(value: Any) -> list[str]:
+    """Coerce a value to list[str]. Handles JSON strings from MCP transport."""
+    if isinstance(value, list):
+        return [str(v) for v in value]
+    if isinstance(value, str):
+        value = value.strip()
+        if value.startswith("["):
+            try:
+                parsed = json.loads(value)
+                if isinstance(parsed, list):
+                    return [str(v) for v in parsed]
+            except json.JSONDecodeError:
+                pass
+        return [v.strip() for v in value.split(",") if v.strip()]
+    raise ValueError(f"Cannot coerce {type(value).__name__} to list[str]")
 
 from google.ads.googleads.errors import GoogleAdsException
 from mcp.server.fastmcp.exceptions import ToolError
@@ -261,9 +279,9 @@ def google_get_ad(
 @mcp.tool()
 def google_create_responsive_search_ad(
     ad_group_id: str,
-    headlines: list[str],
-    descriptions: list[str],
-    final_urls: list[str],
+    headlines: Any,
+    descriptions: Any,
+    final_urls: Any,
     customer_id: Optional[str] = None,
     path1: Optional[str] = None,
     path2: Optional[str] = None,
@@ -296,6 +314,10 @@ def google_create_responsive_search_ad(
     Raises:
         ToolError: If validation fails or API request fails.
     """
+    headlines = _coerce_list(headlines)
+    descriptions = _coerce_list(descriptions)
+    final_urls = _coerce_list(final_urls)
+
     # Validate inputs
     if len(headlines) < 3:
         raise ToolError("At least 3 headlines are required for Responsive Search Ads")

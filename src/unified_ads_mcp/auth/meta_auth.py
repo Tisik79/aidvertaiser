@@ -1,7 +1,10 @@
-"""Meta Ads authentication handler - NO BROWSER FLOW.
+"""Meta Ads authentication handler with browser-based OAuth flow.
 
-This module provides token-based authentication for the Meta (Facebook) Ads API.
-Tokens must be configured in ~/meta-ads.yaml or via environment variables.
+This module provides authentication for the Meta (Facebook) Ads API with support for:
+    - Loading tokens from YAML config file or environment variables
+    - Browser-based OAuth flow with automatic browser opening (implicit grant)
+    - Token refresh and exchange for long-lived tokens
+    - Persistent token caching
 
 Configuration:
     Set META_ADS_CREDENTIALS env var to point to your meta-ads.yaml file,
@@ -25,28 +28,44 @@ import os
 import sys
 import time
 from typing import Optional
+from urllib.parse import urlencode
 
 import requests
 import yaml
 
+from .oauth_server import (
+    start_oauth_server,
+    get_meta_token,
+    open_auth_url,
+    save_token,
+    load_token,
+    clear_tokens,
+)
+
 # Meta OAuth2 endpoints
+META_AUTH_URL = "https://www.facebook.com/v22.0/dialog/oauth"
 META_TOKEN_URL = "https://graph.facebook.com/v22.0/oauth/access_token"
 META_GRAPH_URL = "https://graph.facebook.com/v22.0"
+
+# Permissions required for ads management
+META_SCOPES = "ads_management,ads_read,business_management"
 
 # Default App ID
 DEFAULT_APP_ID = "779761636818489"
 
-# Default config path
-DEFAULT_CREDENTIALS_PATH = os.path.expanduser("~/meta-ads.yaml")
+# Default config path — unified location
+from ..config import resolve_config_path
+DEFAULT_CREDENTIALS_PATH = resolve_config_path("meta-ads.yaml", "META_ADS_CREDENTIALS")
 
 # Refresh tokens 7 days before expiry
 TOKEN_REFRESH_BUFFER = 7 * 24 * 60 * 60
 
 
 class MetaAdsAuth:
-    """Handles Meta Ads token-based authentication.
+    """Handles Meta Ads authentication with browser-based OAuth fallback.
 
-    No browser flow - tokens must be pre-configured.
+    Supports pre-configured tokens and automatic browser OAuth flow when
+    no valid token is available.
     """
 
     def __init__(
@@ -214,17 +233,128 @@ class MetaAdsAuth:
                     self._access_token = refreshed
                     return refreshed
 
-        # No valid token available
-        raise RuntimeError(
-            "Meta Ads: No valid access token available.\n\n"
-            "To get a token:\n"
-            "1. Go to https://developers.facebook.com/tools/explorer/\n"
-            "2. Select your app and click 'Generate Access Token'\n"
-            "3. Grant permissions: ads_management, ads_read, business_management\n"
-            "4. Copy the token to ~/meta-ads.yaml:\n"
-            '   access_token: "<your-token>"\n\n'
-            "For a never-expiring token, use a System User from Business Manager."
-        )
+        # 4. Check persistent OAuth cache
+        cached = load_token("meta")
+        if cached and not force_refresh:
+            cached_token = cached.get("access_token")
+            if cached_token and self._validate_token(cached_token):
+                # Check expiry
+                created_at = cached.get("created_at", 0)
+                expires_in = cached.get("expires_in", 3600)
+                if int(time.time()) < created_at + expires_in - TOKEN_REFRESH_BUFFER:
+                    print(
+                        "[Meta Ads] Using cached OAuth token",
+                        file=sys.stderr,
+                    )
+                    self._access_token = cached_token
+                    return cached_token
+                # Token expiring soon, try to refresh
+                if app_secret:
+                    refreshed = self._refresh_token(cached_token, app_id, app_secret)
+                    if refreshed:
+                        self._access_token = refreshed
+                        return refreshed
+
+        # 5. Fall back to browser-based OAuth flow
+        print("[Meta Ads] No valid token found, starting browser OAuth flow...", file=sys.stderr)
+        return self._browser_oauth_flow(app_id, app_secret)
+
+    def _browser_oauth_flow(self, app_id: str, app_secret: str) -> str:
+        """Perform browser-based OAuth flow using implicit grant.
+
+        Opens the user's browser to Meta's OAuth consent page. Meta redirects
+        back to the local callback server with the access token in the URL
+        fragment. JavaScript on the callback page extracts the token and POSTs
+        it to the server.
+
+        Args:
+            app_id: Facebook App ID.
+            app_secret: Facebook App Secret (used to exchange for long-lived token).
+
+        Returns:
+            Valid access token.
+
+        Raises:
+            TimeoutError: If user doesn't complete auth within 2 minutes.
+            RuntimeError: If no token is received from the callback.
+        """
+        port = start_oauth_server()
+        redirect_uri = f"http://localhost:{port}/callback"
+
+        # Build Meta OAuth URL (implicit grant - token in fragment)
+        auth_params = {
+            "client_id": app_id,
+            "redirect_uri": redirect_uri,
+            "scope": META_SCOPES,
+            "response_type": "token",
+        }
+        auth_url = META_AUTH_URL + "?" + urlencode(auth_params)
+
+        print("\n" + "=" * 60, file=sys.stderr)
+        print("[Meta Ads] Authentication required", file=sys.stderr)
+        print("=" * 60, file=sys.stderr)
+        print("Opening browser for Meta Ads authentication...", file=sys.stderr)
+        print(f"If browser doesn't open, visit:\n{auth_url}", file=sys.stderr)
+        print("=" * 60 + "\n", file=sys.stderr)
+
+        clear_tokens()
+        if not open_auth_url(auth_url):
+            print(
+                "[Meta Ads] Please open the URL above in your browser",
+                file=sys.stderr,
+            )
+
+        # Wait for callback with access token
+        print("[Meta Ads] Waiting for authentication...", file=sys.stderr)
+        timeout = 120  # 2 minute timeout
+        token_data = None
+        for i in range(timeout):
+            token_data = get_meta_token()
+            if token_data:
+                break
+            time.sleep(1)
+            if i > 0 and i % 30 == 0:
+                print(
+                    f"[Meta Ads] Still waiting... ({timeout - i}s remaining)",
+                    file=sys.stderr,
+                )
+        else:
+            raise TimeoutError(
+                "Meta authentication timed out after 2 minutes. "
+                "Please try again and complete the authentication in the browser."
+            )
+
+        access_token = token_data["access_token"]
+        expires_in = token_data.get("expires_in", 3600)
+
+        # Exchange short-lived token for long-lived token if app_secret is available
+        if app_secret:
+            print("[Meta Ads] Exchanging for long-lived token...", file=sys.stderr)
+            long_lived = self._refresh_token(access_token, app_id, app_secret)
+            if long_lived:
+                access_token = long_lived
+
+        # Save to config file
+        config = self._load_config()
+        config["access_token"] = access_token
+        config["app_id"] = app_id
+        if app_secret:
+            config["app_secret"] = app_secret
+        # token_expires_at is set by _refresh_token for long-lived tokens
+        if "token_expires_at" not in config:
+            config["token_expires_at"] = int(time.time()) + expires_in
+        self._save_config(config)
+
+        # Also save to OAuth cache
+        save_token("meta", {
+            "access_token": access_token,
+            "expires_in": expires_in,
+            "created_at": int(time.time()),
+        })
+
+        self._access_token = access_token
+        print("[Meta Ads] Authentication successful!", file=sys.stderr)
+        return access_token
 
     def invalidate(self) -> None:
         """Invalidate current token."""

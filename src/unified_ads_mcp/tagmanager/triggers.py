@@ -9,17 +9,28 @@ from .client import get_tagmanager_service, resolve_workspace_path
 
 
 def _trigger_to_dict(trigger: dict) -> dict[str, Any]:
-    """Extract key fields from a GTM trigger response."""
-    return {
-        "triggerId": trigger.get("triggerId"),
-        "name": trigger.get("name"),
-        "type": trigger.get("type"),
-        "filter": trigger.get("filter", []),
-        "customEventFilter": trigger.get("customEventFilter", []),
-        "fingerprint": trigger.get("fingerprint"),
-        "path": trigger.get("path"),
-        "parameter": trigger.get("parameter", []),
-    }
+    """Extract fields from a GTM trigger response, preserving type-specific params."""
+    # Always include these core fields plus any type-specific fields
+    result: dict[str, Any] = {}
+    # Core fields
+    for key in ("triggerId", "name", "type", "fingerprint", "path", "parentFolderId",
+                "parameter", "filter", "customEventFilter",
+                # Timer-specific
+                "eventName", "interval", "limit",
+                # Scroll-specific
+                "horizontalScrollPercentageList", "verticalScrollPercentageList",
+                # Visibility-specific
+                "visibilitySelector", "visiblePercentage", "totalTimeMinMilliseconds",
+                # Form-specific
+                "waitForTags", "checkValidation", "waitForTagsTimeout",
+                # Auto-event specific
+                "uniqueTriggerId", "autoEventFilter",
+                # Misc
+                "continuousTimeMinMilliseconds", "maxTimerLengthSeconds",
+                "notes", "selector"):
+        if key in trigger:
+            result[key] = trigger[key]
+    return result
 
 
 @mcp.tool()
@@ -62,6 +73,12 @@ def gtm_create_trigger(
     custom_event_filter: Optional[list[dict[str, Any]]] = None,
     filter: Optional[list[dict[str, Any]]] = None,
     parameter: Optional[list[dict[str, Any]]] = None,
+    # Timer-specific fields
+    event_name: Optional[dict[str, Any]] = None,
+    interval: Optional[dict[str, Any]] = None,
+    limit: Optional[dict[str, Any]] = None,
+    # General timer/visibility fields
+    max_timer_length_seconds: Optional[dict[str, Any]] = None,
 ) -> dict[str, Any]:
     """Creates a new trigger in a GTM workspace.
 
@@ -93,6 +110,10 @@ def gtm_create_trigger(
         custom_event_filter: Filters for custom event triggers.
         filter: General filters/conditions for the trigger.
         parameter: Additional trigger parameters.
+        event_name: Timer trigger event name param (dict with type/key/value).
+        interval: Timer trigger interval param (dict with type/key/value).
+        limit: Timer trigger limit param (dict with type/key/value).
+        max_timer_length_seconds: Max timer length param.
 
     Returns:
         dict: Created trigger details.
@@ -112,6 +133,16 @@ def gtm_create_trigger(
         if parameter:
             body["parameter"] = parameter
 
+        # Timer-specific top-level fields
+        if event_name is not None:
+            body["eventName"] = event_name
+        if interval is not None:
+            body["interval"] = interval
+        if limit is not None:
+            body["limit"] = limit
+        if max_timer_length_seconds is not None:
+            body["maxTimerLengthSeconds"] = max_timer_length_seconds
+
         result = service.accounts().containers().workspaces().triggers().create(
             parent=workspace_path, body=body
         ).execute()
@@ -129,6 +160,12 @@ def gtm_update_trigger(
     custom_event_filter: Optional[list[dict[str, Any]]] = None,
     filter: Optional[list[dict[str, Any]]] = None,
     parameter: Optional[list[dict[str, Any]]] = None,
+    # Timer-specific fields
+    event_name: Optional[dict[str, Any]] = None,
+    interval: Optional[dict[str, Any]] = None,
+    limit: Optional[dict[str, Any]] = None,
+    # General timer/visibility fields
+    max_timer_length_seconds: Optional[dict[str, Any]] = None,
 ) -> dict[str, Any]:
     """Updates an existing trigger in a GTM workspace.
 
@@ -138,14 +175,18 @@ def gtm_update_trigger(
         name: New trigger name.
         custom_event_filter: New custom event filters (replaces existing).
         filter: New filters/conditions (replaces existing).
-        parameter: New parameters (replaces existing).
+        parameter: Parameters to merge with existing (matched by 'key' field).
+            Each param is a dict like {"type": "template", "key": "...", "value": "..."}.
+        event_name: Timer trigger event name param (dict with type/key/value).
+        interval: Timer trigger interval param (dict with type/key/value).
+        limit: Timer trigger limit param (dict with type/key/value).
+        max_timer_length_seconds: Max timer length param.
 
     Returns:
         dict: Updated trigger details.
     """
     try:
         service = get_tagmanager_service()
-
         current = service.accounts().containers().workspaces().triggers().get(
             path=trigger_path
         ).execute()
@@ -156,8 +197,28 @@ def gtm_update_trigger(
             current["customEventFilter"] = custom_event_filter
         if filter is not None:
             current["filter"] = filter
+
+        # Merge parameters instead of replacing
         if parameter is not None:
-            current["parameter"] = parameter
+            existing_params = current.get("parameter", [])
+            existing_by_key = {p.get("key"): p for p in existing_params}
+            for new_param in parameter:
+                key = new_param.get("key")
+                if key:
+                    existing_by_key[key] = new_param
+                else:
+                    existing_params.append(new_param)
+            current["parameter"] = list(existing_by_key.values())
+
+        # Timer-specific top-level fields
+        if event_name is not None:
+            current["eventName"] = event_name
+        if interval is not None:
+            current["interval"] = interval
+        if limit is not None:
+            current["limit"] = limit
+        if max_timer_length_seconds is not None:
+            current["maxTimerLengthSeconds"] = max_timer_length_seconds
 
         result = service.accounts().containers().workspaces().triggers().update(
             path=trigger_path, body=current
