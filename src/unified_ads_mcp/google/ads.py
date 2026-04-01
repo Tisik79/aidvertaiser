@@ -500,3 +500,138 @@ def google_delete_ad(
 
     except GoogleAdsException as e:
         raise ToolError(format_error(e)) from e
+
+
+@mcp.tool()
+def google_set_demographic_exclusions(
+    ad_group_id: str,
+    exclusions: list[dict[str, str]],
+    customer_id: Optional[str] = None,
+    replace_existing: bool = True,
+    login_customer_id: Optional[str] = None,
+) -> dict[str, Any]:
+    """Adds negative demographic criteria to an ad group (age, gender, income).
+
+    Search campaigns require ad group level targeting, not campaign level.
+    Use this to exclude age ranges, genders, or income ranges from seeing ads.
+
+    Args:
+        ad_group_id: The ad group ID to modify.
+        exclusions: List of exclusion objects, each with:
+            - type: "AGE_RANGE", "GENDER", or "INCOME_RANGE"
+            - value: The enum value name, e.g.:
+              Age: AGE_RANGE_18_24, AGE_RANGE_25_34, AGE_RANGE_35_44,
+                   AGE_RANGE_45_54, AGE_RANGE_55_64, AGE_RANGE_65_UP,
+                   AGE_RANGE_UNDETERMINED
+              Gender: MALE, FEMALE, UNDETERMINED
+              Income: INCOME_RANGE_0_50, INCOME_RANGE_50_60, INCOME_RANGE_60_70,
+                      INCOME_RANGE_70_80, INCOME_RANGE_80_90, INCOME_RANGE_90_UP,
+                      INCOME_RANGE_UNDETERMINED
+        customer_id: The Google Ads customer ID. Uses default if not provided.
+        replace_existing: If True (default), removes existing negative demographic
+            criteria of the same types before adding new ones.
+        login_customer_id: Optional MCC account ID.
+
+    Returns:
+        dict: Result with exclusions_added and exclusions_removed counts.
+
+    Example - B2B targeting (exclude under-25 and undetermined age):
+        exclusions=[
+            {"type": "AGE_RANGE", "value": "AGE_RANGE_18_24"},
+            {"type": "AGE_RANGE", "value": "AGE_RANGE_UNDETERMINED"},
+        ]
+    """
+    try:
+        client = get_google_ads_client(login_customer_id=login_customer_id)
+        customer_id = resolve_customer_id(customer_id)
+        if not customer_id:
+            raise ToolError("No customer_id provided and no default configured")
+
+        ad_group_resource = f"customers/{customer_id}/adGroups/{ad_group_id}"
+        criterion_service = client.get_service("AdGroupCriterionService")
+        removed_count = 0
+
+        # Determine which demographic types we're setting
+        types_to_set = {e["type"].upper() for e in exclusions}
+        type_to_gaql = {
+            "AGE_RANGE": "AGE_RANGE",
+            "GENDER": "GENDER",
+            "INCOME_RANGE": "INCOME_RANGE",
+        }
+
+        # Remove existing negative criteria for the same types
+        if replace_existing and types_to_set:
+            ga_service = client.get_service("GoogleAdsService")
+            type_filters = " OR ".join(
+                f"ad_group_criterion.type = '{type_to_gaql[t]}'"
+                for t in types_to_set if t in type_to_gaql
+            )
+            # GAQL doesn't support OR, use IN if all same field
+            type_values = [f"'{type_to_gaql[t]}'" for t in types_to_set if t in type_to_gaql]
+            query = f"""
+                SELECT ad_group_criterion.resource_name, ad_group_criterion.type
+                FROM ad_group_criterion
+                WHERE ad_group.id = {ad_group_id}
+                  AND ad_group_criterion.type IN ({', '.join(type_values)})
+                  AND ad_group_criterion.negative = TRUE
+            """
+            response = ga_service.search_stream(
+                customer_id=customer_id, query=query
+            )
+            remove_ops = []
+            for batch in response:
+                for row in batch.results:
+                    op = client.get_type("AdGroupCriterionOperation")
+                    op.remove = row.ad_group_criterion.resource_name
+                    remove_ops.append(op)
+
+            if remove_ops:
+                criterion_service.mutate_ad_group_criteria(
+                    customer_id=customer_id, operations=remove_ops
+                )
+                removed_count = len(remove_ops)
+
+        # Add new negative criteria
+        add_ops = []
+        for excl in exclusions:
+            excl_type = excl["type"].upper()
+            excl_value = excl["value"].upper()
+
+            op = client.get_type("AdGroupCriterionOperation")
+            criterion = op.create
+            criterion.ad_group = ad_group_resource
+            criterion.negative = True
+
+            if excl_type == "AGE_RANGE":
+                criterion.age_range.type_ = get_enum_value(
+                    client, "AgeRangeTypeEnum", excl_value
+                )
+            elif excl_type == "GENDER":
+                criterion.gender.type_ = get_enum_value(
+                    client, "GenderTypeEnum", excl_value
+                )
+            elif excl_type == "INCOME_RANGE":
+                criterion.income_range.type_ = get_enum_value(
+                    client, "IncomeRangeTypeEnum", excl_value
+                )
+            else:
+                raise ToolError(
+                    f"Invalid exclusion type '{excl_type}'. "
+                    "Options: AGE_RANGE, GENDER, INCOME_RANGE"
+                )
+            add_ops.append(op)
+
+        if add_ops:
+            criterion_service.mutate_ad_group_criteria(
+                customer_id=customer_id, operations=add_ops
+            )
+
+        return {
+            "ad_group_id": ad_group_id,
+            "exclusions_added": len(add_ops),
+            "exclusions_removed": removed_count,
+            "status": "updated",
+        }
+
+    except GoogleAdsException as e:
+        raise ToolError(format_error(e)) from e
