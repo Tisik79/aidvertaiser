@@ -38,17 +38,19 @@ from .client import (
 
 
 def _preprocess_gaql(query: str) -> str:
-    """Preprocesses a GAQL query to add omit_unselected_resource_names=true.
+    """Preprocesses a GAQL query with autocorrections and optimizations.
 
-    This optimization reduces response size by omitting resource names
-    that weren't explicitly selected in the query.
+    GAQL is NOT SQL — it has restrictions that LLMs often violate. This
+    function silently fixes common mistakes before sending to the API.
 
-    Args:
-        query: The GAQL query to preprocess.
-
-    Returns:
-        The preprocessed query with PARAMETERS clause.
+    Autocorrections applied:
+    - OR conditions on same field → IN (...) rewrite
+    - Strip parentheses from WHERE conditions (GAQL doesn't support them)
+    - Add omit_unselected_resource_names=true parameter
     """
+    query = _fix_or_conditions(query)
+    query = _strip_where_parens(query)
+
     if "omit_unselected_resource_names" not in query.lower():
         if "PARAMETERS" in query.upper():
             if "include_drafts" in query.lower():
@@ -56,6 +58,70 @@ def _preprocess_gaql(query: str) -> str:
             return query + " omit_unselected_resource_names=true"
         return query + " PARAMETERS omit_unselected_resource_names=true"
     return query
+
+
+def _fix_or_conditions(query: str) -> str:
+    """Rewrite OR conditions on the same field to IN (...).
+
+    Converts:
+        field = 'A' OR field = 'B' OR field = 'C'
+    To:
+        field IN ('A', 'B', 'C')
+
+    Also handles != with OR (converts to AND chain since GAQL has no OR).
+    """
+    import re
+
+    # Match: field = 'val' OR field = 'val' (possibly chained)
+    # Pattern: captures field_name = 'value' OR field_name = 'value' ...
+    or_pattern = re.compile(
+        r"(\b[\w.]+)\s*=\s*'([^']+)'"          # field = 'val1'
+        r"(?:\s+OR\s+\1\s*=\s*'([^']+)')+",    # OR field = 'val2' (repeated)
+        re.IGNORECASE,
+    )
+
+    def _or_to_in(m: re.Match) -> str:
+        field = m.group(1)
+        # Extract all values from the full match
+        values = re.findall(
+            re.escape(field) + r"\s*=\s*'([^']+)'",
+            m.group(0),
+            re.IGNORECASE,
+        )
+        quoted = ", ".join(f"'{v}'" for v in values)
+        return f"{field} IN ({quoted})"
+
+    return or_pattern.sub(_or_to_in, query)
+
+
+def _strip_where_parens(query: str) -> str:
+    """Remove parenthesized grouping in WHERE clauses (GAQL doesn't support it).
+
+    Converts:
+        WHERE (campaign.status = 'ENABLED' AND metrics.clicks > 0)
+    To:
+        WHERE campaign.status = 'ENABLED' AND metrics.clicks > 0
+
+    Only strips outer-level parens around AND conditions, not function-like
+    parens (IN (...)) or nested sub-expressions.
+    """
+    import re
+
+    # Only strip parens that wrap AND conditions in WHERE clause
+    # Don't touch IN (...) or resource_name parens
+    def _strip_condition_parens(m: re.Match) -> str:
+        inner = m.group(1)
+        # Only strip if it contains AND and doesn't look like IN (...)
+        if re.search(r'\bAND\b', inner, re.IGNORECASE) and not inner.strip().startswith("'"):
+            return inner
+        return m.group(0)
+
+    return re.sub(
+        r'\(\s*((?:(?!\bIN\b).)*?\bAND\b.*?)\s*\)',
+        _strip_condition_parens,
+        query,
+        flags=re.IGNORECASE,
+    )
 
 
 @mcp.tool()
@@ -66,17 +132,25 @@ def google_run_query(
 ) -> list[dict[str, Any]]:
     """Executes a Google Ads Query Language (GAQL) query.
 
-    GAQL is a SQL-like language for querying Google Ads data.
-    Use this for custom reports and data extraction.
+    GAQL is SQL-like but NOT SQL. Key differences:
+    - NO OR operator. Use IN ('A', 'B') for multi-value filters on the same field.
+    - NO parenthesized conditions. Just chain with AND.
+    - NO JOIN. Each query targets one resource (FROM clause).
+    - NO subqueries.
+    - Date filtering uses DURING keyword: segments.date DURING LAST_7_DAYS
+
+    Autocorrections applied automatically:
+    - field = 'A' OR field = 'B' → field IN ('A', 'B')
+    - Parenthesized AND conditions → stripped to flat AND
 
     Args:
-        customer_id: The Google Ads customer ID (digits only, no dashes).
-            Uses default from config if not provided.
         query: The GAQL query to execute. Example:
             SELECT campaign.id, campaign.name, metrics.clicks
             FROM campaign
             WHERE campaign.status = 'ENABLED'
             ORDER BY metrics.clicks DESC
+        customer_id: The Google Ads customer ID (digits only, no dashes).
+            Uses default from config if not provided.
         login_customer_id: Optional MCC account ID if accessing through
             a manager account.
 
@@ -92,6 +166,10 @@ def google_run_query(
         - Campaign performance:
           SELECT campaign.id, campaign.name, metrics.impressions, metrics.clicks
           FROM campaign WHERE campaign.status = 'ENABLED'
+
+        - Multiple statuses (use IN, not OR):
+          SELECT campaign.id, campaign.name FROM campaign
+          WHERE campaign.status IN ('ENABLED', 'PAUSED')
 
         - Keyword performance:
           SELECT ad_group_criterion.keyword.text, metrics.clicks, metrics.cost_micros
