@@ -71,4 +71,26 @@ def resolve_workspace_path(
             "Set default_container_id in google-tagmanager.yaml or pass container_id explicitly."
         )
 
+    # If workspace_id is not numeric, resolve it by listing workspaces
+    if not workspace_id.isdigit():
+        service = get_tagmanager_service()
+        parent = f"accounts/{account_id}/containers/{container_id}"
+        result = service.accounts().containers().workspaces().list(parent=parent).execute()
+        workspaces = result.get("workspace", [])
+
+        # Try to match by name
+        for ws in workspaces:
+            if ws.get("name") == workspace_id:
+                workspace_id = ws["workspaceId"]
+                break
+        else:
+            # If "Default Workspace" not found by name, use the first workspace
+            if workspaces:
+                workspace_id = workspaces[0]["workspaceId"]
+            else:
+                raise ValueError(
+                    f"No workspaces found in container {container_id}. "
+                    "Create a workspace first or specify a numeric workspace_id."
+                )
+
     return f"accounts/{account_id}/containers/{container_id}/workspaces/{workspace_id}"

@@ -4,11 +4,26 @@ This module provides MCP tools for running GAQL queries and generating
 performance reports for Google Ads campaigns, keywords, and other entities.
 """
 
+import keyword
 from typing import Any, Optional
 
 from google.ads.googleads.errors import GoogleAdsException
-from google.ads.googleads.util import get_nested_attr
 from mcp.server.fastmcp.exceptions import ToolError
+
+# Protobuf appends "_" to field names that clash with Python reserved words
+# (e.g. "type" → "type_"). The API field_mask uses original proto names,
+# so we must remap before calling getattr on response objects.
+_PROTO_RESERVED = frozenset(keyword.kwlist) | {"type", "input", "filter", "format"}
+
+
+def _get_nested_attr(obj: Any, attr: str) -> Any:
+    """Like google.ads.googleads.util.get_nested_attr but handles reserved-word remapping."""
+    for part in attr.split("."):
+        try:
+            obj = getattr(obj, part)
+        except AttributeError:
+            obj = getattr(obj, f"{part}_")
+    return obj
 
 from ..server import mcp
 from .client import (
@@ -105,7 +120,7 @@ def google_run_query(
             for row in batch.results:
                 row_data = {}
                 for field_path in batch.field_mask.paths:
-                    value = get_nested_attr(row, field_path)
+                    value = _get_nested_attr(row, field_path)
                     row_data[field_path] = format_value(value)
                 results.append(row_data)
 
@@ -113,6 +128,8 @@ def google_run_query(
 
     except GoogleAdsException as e:
         raise ToolError(format_error(e)) from e
+    except Exception as e:
+        raise ToolError(f"{type(e).__name__}: {e}") from e
 
 
 @mcp.tool()
@@ -275,6 +292,9 @@ def google_get_keyword_performance(
             - ad_group_name: Parent ad group name
             - impressions, clicks, cost, conversions: Metrics
             - ctr, average_cpc, quality_score: Performance metrics
+            - creative_quality: Ad creative quality bucket (BELOW_AVERAGE, AVERAGE, ABOVE_AVERAGE)
+            - landing_page_quality: Landing page experience bucket
+            - expected_ctr: Expected click-through rate bucket
 
     Raises:
         ToolError: If the API request fails.
@@ -292,6 +312,9 @@ def google_get_keyword_performance(
                 ad_group_criterion.keyword.match_type,
                 ad_group_criterion.status,
                 ad_group_criterion.quality_info.quality_score,
+                ad_group_criterion.quality_info.creative_quality_score,
+                ad_group_criterion.quality_info.post_click_quality_score,
+                ad_group_criterion.quality_info.search_predicted_ctr,
                 campaign.id,
                 campaign.name,
                 ad_group.id,
@@ -341,6 +364,18 @@ def google_get_keyword_performance(
                         ),
                         "quality_score": row.ad_group_criterion.quality_info.quality_score
                         or None,
+                        "creative_quality": get_enum_name(
+                            client, "QualityScoreBucketEnum",
+                            row.ad_group_criterion.quality_info.creative_quality_score,
+                        ) if row.ad_group_criterion.quality_info.creative_quality_score else None,
+                        "landing_page_quality": get_enum_name(
+                            client, "QualityScoreBucketEnum",
+                            row.ad_group_criterion.quality_info.post_click_quality_score,
+                        ) if row.ad_group_criterion.quality_info.post_click_quality_score else None,
+                        "expected_ctr": get_enum_name(
+                            client, "QualityScoreBucketEnum",
+                            row.ad_group_criterion.quality_info.search_predicted_ctr,
+                        ) if row.ad_group_criterion.quality_info.search_predicted_ctr else None,
                         "campaign_id": str(row.campaign.id),
                         "campaign_name": row.campaign.name,
                         "ad_group_id": str(row.ad_group.id),
@@ -506,8 +541,9 @@ def google_get_search_terms_report(
         query = f"""
             SELECT
                 search_term_view.search_term,
-                ad_group_criterion.keyword.text,
-                ad_group_criterion.keyword.match_type,
+                search_term_view.status,
+                segments.keyword.info.text,
+                segments.keyword.info.match_type,
                 campaign.id,
                 campaign.name,
                 ad_group.id,
@@ -528,7 +564,7 @@ def google_get_search_terms_report(
         if min_impressions > 0:
             query += f" AND metrics.impressions >= {min_impressions}"
 
-        query += " ORDER BY metrics.impressions DESC"
+        query += " ORDER BY metrics.cost_micros DESC"
 
         ga_service = client.get_service("GoogleAdsService")
         response = ga_service.search_stream(
@@ -542,11 +578,11 @@ def google_get_search_terms_report(
                 results.append(
                     {
                         "search_term": row.search_term_view.search_term,
-                        "keyword_text": row.ad_group_criterion.keyword.text,
+                        "keyword_text": row.segments.keyword.info.text,
                         "match_type": get_enum_name(
                             client,
                             "KeywordMatchTypeEnum",
-                            row.ad_group_criterion.keyword.match_type,
+                            row.segments.keyword.info.match_type,
                         ),
                         "campaign_id": str(row.campaign.id),
                         "campaign_name": row.campaign.name,

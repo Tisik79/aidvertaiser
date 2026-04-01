@@ -16,6 +16,8 @@ from typing import Any, Optional
 
 from google.ads.googleads.client import GoogleAdsClient
 from google.ads.googleads.errors import GoogleAdsException
+from google.protobuf.json_format import MessageToDict
+from google.protobuf.message import Message as ProtobufMessage
 import proto
 import yaml
 
@@ -24,7 +26,8 @@ from ..config import only_default_account_enabled
 
 
 # Default path for Google Ads credentials
-DEFAULT_CREDENTIALS_PATH = os.path.expanduser("~/google-ads.yaml")
+from ..config import resolve_config_path
+DEFAULT_CREDENTIALS_PATH = resolve_config_path("google-ads.yaml", "GOOGLE_ADS_CREDENTIALS")
 
 
 class GoogleAdsClientFactory:
@@ -230,12 +233,23 @@ def format_value(value: Any) -> Any:
     Returns:
         A JSON-serializable Python object.
     """
+    if value is None:
+        return None
     if isinstance(value, proto.Message):
         return proto.Message.to_dict(value)
-    elif isinstance(value, proto.Enum):
+    if isinstance(value, ProtobufMessage):
+        return MessageToDict(value, preserving_proto_field_name=True)
+    if isinstance(value, proto.Enum):
         return value.name
-    else:
+    if isinstance(value, (str, bytes, int, float, bool)):
         return value
+    if isinstance(value, dict):
+        return {k: format_value(v) for k, v in value.items()}
+    # Protobuf repeated containers (RepeatedScalarContainer, RepeatedCompositeContainer)
+    # support iteration and len() but may lack __iter__ (C extensions).
+    if hasattr(value, "__iter__") or hasattr(value, "__len__"):
+        return [format_value(item) for item in value]
+    return str(value)
 
 
 def get_enum_name(client: GoogleAdsClient, enum_path: str, value: Any) -> str:

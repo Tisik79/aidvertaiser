@@ -270,6 +270,8 @@ def google_create_campaign(
     start_date: Optional[str] = None,
     end_date: Optional[str] = None,
     target_spend: bool = True,
+    location_ids: Optional[list[str]] = None,
+    language_ids: Optional[list[str]] = None,
     login_customer_id: Optional[str] = None,
 ) -> dict[str, Any]:
     """Creates a new Google Ads campaign with a daily budget.
@@ -293,6 +295,13 @@ def google_create_campaign(
         start_date: Optional start date in YYYY-MM-DD format.
         end_date: Optional end date in YYYY-MM-DD format.
         target_spend: If True, uses Target Spend bidding to maximize clicks.
+        location_ids: Optional list of geo target constant IDs for location targeting.
+            Common IDs: "2203" (Czech Republic), "2703" (Slovakia), "2276" (Germany),
+            "2840" (United States), "2826" (United Kingdom).
+            Without this, ads show worldwide!
+        language_ids: Optional list of language criterion IDs.
+            Common IDs: "1001" (Czech), "1000" (English), "1010" (German),
+            "1017" (Slovak).
         login_customer_id: Optional MCC account ID if accessing through
             a manager account.
 
@@ -366,10 +375,40 @@ def google_create_campaign(
             operations=[campaign_operation],
         )
 
+        campaign_resource_name = campaign_response.results[0].resource_name
+        campaign_id = campaign_resource_name.split("/")[-1]
+
+        # Add location targeting criteria
+        if location_ids or language_ids:
+            criterion_service = client.get_service("CampaignCriterionService")
+            criterion_ops = []
+
+            for loc_id in (location_ids or []):
+                op = client.get_type("CampaignCriterionOperation")
+                criterion = op.create
+                criterion.campaign = campaign_resource_name
+                criterion.location.geo_target_constant = f"geoTargetConstants/{loc_id}"
+                criterion_ops.append(op)
+
+            for lang_id in (language_ids or []):
+                op = client.get_type("CampaignCriterionOperation")
+                criterion = op.create
+                criterion.campaign = campaign_resource_name
+                criterion.language.language_constant = f"languageConstants/{lang_id}"
+                criterion_ops.append(op)
+
+            if criterion_ops:
+                criterion_service.mutate_campaign_criteria(
+                    customer_id=customer_id,
+                    operations=criterion_ops,
+                )
+
         return {
-            "campaign_id": campaign_response.results[0].resource_name.split("/")[-1],
-            "campaign_resource_name": campaign_response.results[0].resource_name,
+            "campaign_id": campaign_id,
+            "campaign_resource_name": campaign_resource_name,
             "budget_resource_name": budget_resource_name,
+            "locations_set": len(location_ids) if location_ids else 0,
+            "languages_set": len(language_ids) if language_ids else 0,
             "status": "created",
         }
 
@@ -589,6 +628,13 @@ def google_update_campaign(
     end_date: Optional[str] = None,
     target_content_network: Optional[bool] = None,
     target_search_network: Optional[bool] = None,
+    target_partner_search_network: Optional[bool] = None,
+    geo_target_type: Optional[str] = None,
+    bidding_strategy_type: Optional[str] = None,
+    target_cpa_micros: Optional[int] = None,
+    target_roas: Optional[float] = None,
+    enhanced_cpc: Optional[bool] = None,
+    budget_amount_micros: Optional[int] = None,
     login_customer_id: Optional[str] = None,
 ) -> dict[str, Any]:
     """Updates an existing Google Ads campaign.
@@ -604,6 +650,26 @@ def google_update_campaign(
         target_content_network: Optional bool to enable/disable Display Network.
             Set to False to disable Display Network (recommended for Search campaigns).
         target_search_network: Optional bool to enable/disable Search Partners.
+        target_partner_search_network: Optional bool to enable/disable partner search network.
+        geo_target_type: Optional location targeting mode. Options:
+            - PRESENCE: Only people physically IN your targeted location (RECOMMENDED)
+            - SEARCH_INTEREST: People searching for or interested in your location
+            - PRESENCE_OR_INTEREST: Both presence and interest (DEFAULT but NOT recommended —
+              this is the #1 source of irrelevant/fraudulent clicks)
+        bidding_strategy_type: Optional bidding strategy to set. Options:
+            - MAXIMIZE_CLICKS: Maximize clicks within budget
+            - MAXIMIZE_CONVERSIONS: Maximize conversions (optionally with target CPA)
+            - TARGET_CPA: Target cost per acquisition
+            - TARGET_ROAS: Target return on ad spend
+            - MANUAL_CPC: Manual CPC bidding (optionally with enhanced CPC)
+        target_cpa_micros: Optional target CPA in micros for MAXIMIZE_CONVERSIONS
+            or TARGET_CPA strategies (e.g., 5000000 = 5.00 in account currency).
+        target_roas: Optional target ROAS for TARGET_ROAS strategy
+            (e.g., 2.0 = 200% return on ad spend).
+        enhanced_cpc: Optional bool to enable enhanced CPC for MANUAL_CPC strategy.
+        budget_amount_micros: Optional new daily budget in micros
+            (e.g., 10000000 = 10.00 in account currency). Updates the campaign's
+            linked budget resource.
         login_customer_id: Optional MCC account ID if accessing through
             a manager account.
 
@@ -611,6 +677,7 @@ def google_update_campaign(
         dict: Updated campaign details:
             - campaign_resource_name: Full resource name
             - updated_fields: List of fields that were updated
+            - budget_updated: Whether the budget was also updated
             - status: Update status
 
     Raises:
@@ -627,7 +694,7 @@ def google_update_campaign(
         campaign = campaign_operation.update
         campaign.resource_name = f"customers/{customer_id}/campaigns/{campaign_id}"
 
-        field_mask = []
+        field_mask: list[str] = []
 
         if name is not None:
             campaign.name = name
@@ -653,19 +720,99 @@ def google_update_campaign(
             campaign.network_settings.target_search_network = target_search_network
             field_mask.append("network_settings.target_search_network")
 
-        if not field_mask:
+        if target_partner_search_network is not None:
+            campaign.network_settings.target_partner_search_network = target_partner_search_network
+            field_mask.append("network_settings.target_partner_search_network")
+
+        if geo_target_type is not None:
+            campaign.geo_target_type_setting.positive_geo_target_type = get_enum_value(
+                client, "PositiveGeoTargetTypeEnum", geo_target_type.upper()
+            )
+            field_mask.append("geo_target_type_setting.positive_geo_target_type")
+
+        if bidding_strategy_type is not None:
+            strategy = bidding_strategy_type.upper()
+            if strategy == "MAXIMIZE_CLICKS":
+                campaign.target_spend.target_spend_micros = 0
+                field_mask.append("target_spend.target_spend_micros")
+            elif strategy == "MAXIMIZE_CONVERSIONS":
+                campaign.maximize_conversions.target_cpa_micros = target_cpa_micros or 0
+                field_mask.append("maximize_conversions.target_cpa_micros")
+            elif strategy == "TARGET_CPA":
+                campaign.target_cpa.target_cpa_micros = target_cpa_micros or 0
+                field_mask.append("target_cpa.target_cpa_micros")
+            elif strategy == "TARGET_ROAS":
+                campaign.target_roas.target_roas = target_roas or 0.0
+                field_mask.append("target_roas.target_roas")
+            elif strategy == "MANUAL_CPC":
+                campaign.manual_cpc.enhanced_cpc_enabled = enhanced_cpc or False
+                field_mask.append("manual_cpc.enhanced_cpc_enabled")
+            else:
+                raise ToolError(
+                    f"Invalid bidding_strategy_type '{bidding_strategy_type}'. "
+                    "Options: MAXIMIZE_CLICKS, MAXIMIZE_CONVERSIONS, TARGET_CPA, "
+                    "TARGET_ROAS, MANUAL_CPC"
+                )
+
+        if not field_mask and budget_amount_micros is None:
             raise ToolError("No fields to update. Provide at least one field.")
 
-        campaign_operation.update_mask.paths.extend(field_mask)
+        # Update campaign fields if any
+        budget_updated = False
+        if field_mask:
+            campaign_operation.update_mask.paths.extend(field_mask)
 
-        response = campaign_service.mutate_campaigns(
-            customer_id=customer_id,
-            operations=[campaign_operation],
-        )
+            response = campaign_service.mutate_campaigns(
+                customer_id=customer_id,
+                operations=[campaign_operation],
+            )
+            campaign_resource_name = response.results[0].resource_name
+        else:
+            campaign_resource_name = (
+                f"customers/{customer_id}/campaigns/{campaign_id}"
+            )
+
+        # Update budget separately (budgets are independent resources)
+        if budget_amount_micros is not None:
+            ga_service = client.get_service("GoogleAdsService")
+            budget_query = f"""
+                SELECT campaign.campaign_budget
+                FROM campaign
+                WHERE campaign.id = {campaign_id}
+                LIMIT 1
+            """
+            budget_response = ga_service.search_stream(
+                customer_id=customer_id,
+                query=budget_query,
+            )
+            budget_resource_name = None
+            for batch in budget_response:
+                for row in batch.results:
+                    budget_resource_name = row.campaign.campaign_budget
+
+            if not budget_resource_name:
+                raise ToolError(
+                    f"Could not find budget for campaign {campaign_id}"
+                )
+
+            budget_service = client.get_service("CampaignBudgetService")
+            budget_operation = client.get_type("CampaignBudgetOperation")
+            budget = budget_operation.update
+            budget.resource_name = budget_resource_name
+            budget.amount_micros = budget_amount_micros
+            budget_operation.update_mask.paths.append("amount_micros")
+
+            budget_service.mutate_campaign_budgets(
+                customer_id=customer_id,
+                operations=[budget_operation],
+            )
+            budget_updated = True
+            field_mask.append("budget_amount_micros")
 
         return {
-            "campaign_resource_name": response.results[0].resource_name,
+            "campaign_resource_name": campaign_resource_name,
             "updated_fields": field_mask,
+            "budget_updated": budget_updated,
             "status": "updated",
         }
 
@@ -717,6 +864,622 @@ def google_delete_campaign(
         return {
             "campaign_resource_name": response.results[0].resource_name,
             "status": "removed",
+        }
+
+    except GoogleAdsException as e:
+        raise ToolError(format_error(e)) from e
+
+
+@mcp.tool()
+def google_set_campaign_locations(
+    campaign_id: str,
+    location_ids: list[str],
+    customer_id: Optional[str] = None,
+    replace_existing: bool = True,
+    login_customer_id: Optional[str] = None,
+) -> dict[str, Any]:
+    """Sets location targeting for a campaign.
+
+    By default replaces all existing location criteria. Without location targeting,
+    ads show worldwide — always set locations for new campaigns!
+
+    Args:
+        campaign_id: The campaign ID to update.
+        location_ids: List of geo target constant IDs.
+            Common IDs: "2203" (Czech Republic), "2703" (Slovakia),
+            "2276" (Germany), "2840" (United States), "2826" (United Kingdom),
+            "2250" (France), "2380" (Italy), "2724" (Spain), "2616" (Poland).
+            Find more at: https://developers.google.com/google-ads/api/data/geotargets
+        customer_id: The Google Ads customer ID. Uses default if not provided.
+        replace_existing: If True (default), removes existing location criteria first.
+            If False, adds to existing locations.
+        login_customer_id: Optional MCC account ID.
+
+    Returns:
+        dict: Result with locations_added count and locations_removed count.
+
+    Raises:
+        ToolError: If the API request fails.
+    """
+    try:
+        client = get_google_ads_client(login_customer_id=login_customer_id)
+        customer_id = resolve_customer_id(customer_id)
+        if not customer_id:
+            raise ToolError("No customer_id provided and no default configured")
+
+        campaign_resource = f"customers/{customer_id}/campaigns/{campaign_id}"
+        criterion_service = client.get_service("CampaignCriterionService")
+        removed_count = 0
+
+        # Remove existing location criteria if replacing
+        if replace_existing:
+            ga_service = client.get_service("GoogleAdsService")
+            query = f"""
+                SELECT campaign_criterion.resource_name, campaign_criterion.location.geo_target_constant
+                FROM campaign_criterion
+                WHERE campaign.id = {campaign_id}
+                  AND campaign_criterion.type = 'LOCATION'
+                  AND campaign_criterion.negative = FALSE
+            """
+            response = ga_service.search_stream(
+                customer_id=customer_id, query=query
+            )
+            remove_ops = []
+            for batch in response:
+                for row in batch.results:
+                    op = client.get_type("CampaignCriterionOperation")
+                    op.remove = row.campaign_criterion.resource_name
+                    remove_ops.append(op)
+
+            if remove_ops:
+                criterion_service.mutate_campaign_criteria(
+                    customer_id=customer_id, operations=remove_ops
+                )
+                removed_count = len(remove_ops)
+
+        # Add new location criteria
+        add_ops = []
+        for loc_id in location_ids:
+            op = client.get_type("CampaignCriterionOperation")
+            criterion = op.create
+            criterion.campaign = campaign_resource
+            criterion.location.geo_target_constant = f"geoTargetConstants/{loc_id}"
+            add_ops.append(op)
+
+        if add_ops:
+            criterion_service.mutate_campaign_criteria(
+                customer_id=customer_id, operations=add_ops
+            )
+
+        return {
+            "campaign_id": campaign_id,
+            "locations_added": len(add_ops),
+            "locations_removed": removed_count,
+            "status": "updated",
+        }
+
+    except GoogleAdsException as e:
+        raise ToolError(format_error(e)) from e
+
+
+@mcp.tool()
+def google_set_campaign_languages(
+    campaign_id: str,
+    language_ids: list[str],
+    customer_id: Optional[str] = None,
+    replace_existing: bool = True,
+    login_customer_id: Optional[str] = None,
+) -> dict[str, Any]:
+    """Sets language targeting for a campaign.
+
+    Args:
+        campaign_id: The campaign ID to update.
+        language_ids: List of language criterion IDs.
+            Common IDs: "1001" (Czech), "1000" (English), "1010" (German),
+            "1017" (Slovak), "1035" (French), "1030" (Italian), "1003" (Spanish),
+            "1030" (Polish).
+        customer_id: The Google Ads customer ID. Uses default if not provided.
+        replace_existing: If True (default), removes existing language criteria first.
+        login_customer_id: Optional MCC account ID.
+
+    Returns:
+        dict: Result with languages_added and languages_removed counts.
+    """
+    try:
+        client = get_google_ads_client(login_customer_id=login_customer_id)
+        customer_id = resolve_customer_id(customer_id)
+        if not customer_id:
+            raise ToolError("No customer_id provided and no default configured")
+
+        campaign_resource = f"customers/{customer_id}/campaigns/{campaign_id}"
+        criterion_service = client.get_service("CampaignCriterionService")
+        removed_count = 0
+
+        if replace_existing:
+            ga_service = client.get_service("GoogleAdsService")
+            response = ga_service.search_stream(
+                customer_id=customer_id,
+                query=f"""
+                    SELECT campaign_criterion.resource_name
+                    FROM campaign_criterion
+                    WHERE campaign.id = {campaign_id}
+                      AND campaign_criterion.type = 'LANGUAGE'
+                      AND campaign_criterion.negative = FALSE
+                """,
+            )
+            remove_ops = []
+            for batch in response:
+                for row in batch.results:
+                    op = client.get_type("CampaignCriterionOperation")
+                    op.remove = row.campaign_criterion.resource_name
+                    remove_ops.append(op)
+            if remove_ops:
+                criterion_service.mutate_campaign_criteria(
+                    customer_id=customer_id, operations=remove_ops
+                )
+                removed_count = len(remove_ops)
+
+        add_ops = []
+        for lang_id in language_ids:
+            op = client.get_type("CampaignCriterionOperation")
+            criterion = op.create
+            criterion.campaign = campaign_resource
+            criterion.language.language_constant = f"languageConstants/{lang_id}"
+            add_ops.append(op)
+
+        if add_ops:
+            criterion_service.mutate_campaign_criteria(
+                customer_id=customer_id, operations=add_ops
+            )
+
+        return {
+            "campaign_id": campaign_id,
+            "languages_added": len(add_ops),
+            "languages_removed": removed_count,
+            "status": "updated",
+        }
+
+    except GoogleAdsException as e:
+        raise ToolError(format_error(e)) from e
+
+
+@mcp.tool()
+def google_set_ad_schedule(
+    campaign_id: str,
+    schedules: list[dict[str, Any]],
+    customer_id: Optional[str] = None,
+    replace_existing: bool = True,
+    login_customer_id: Optional[str] = None,
+) -> dict[str, Any]:
+    """Sets ad schedule (day/hour targeting) for a campaign.
+
+    Controls which days and hours ads are shown. Replaces existing schedules
+    by default. Without a schedule, ads run 24/7.
+
+    Args:
+        campaign_id: The campaign ID to update.
+        schedules: List of schedule entries, each with:
+            - day: Day of week (MONDAY, TUESDAY, WEDNESDAY, THURSDAY,
+              FRIDAY, SATURDAY, SUNDAY)
+            - start_hour: Start hour 0-23
+            - end_hour: End hour 0-24 (24 = midnight end)
+            - bid_modifier: Optional bid adjustment (1.0 = no change,
+              1.2 = +20%, 0.0 = don't show)
+        customer_id: The Google Ads customer ID. Uses default if not provided.
+        replace_existing: If True (default), removes existing ad schedules first.
+        login_customer_id: Optional MCC account ID.
+
+    Returns:
+        dict: Result with schedules_added and schedules_removed counts.
+
+    Example:
+        Mon-Fri 7am-6pm:
+        schedules=[
+            {"day": "MONDAY", "start_hour": 7, "end_hour": 18},
+            {"day": "TUESDAY", "start_hour": 7, "end_hour": 18},
+            {"day": "WEDNESDAY", "start_hour": 7, "end_hour": 18},
+            {"day": "THURSDAY", "start_hour": 7, "end_hour": 18},
+            {"day": "FRIDAY", "start_hour": 7, "end_hour": 18},
+        ]
+    """
+    try:
+        client = get_google_ads_client(login_customer_id=login_customer_id)
+        customer_id = resolve_customer_id(customer_id)
+        if not customer_id:
+            raise ToolError("No customer_id provided and no default configured")
+
+        campaign_resource = f"customers/{customer_id}/campaigns/{campaign_id}"
+        criterion_service = client.get_service("CampaignCriterionService")
+        removed_count = 0
+
+        if replace_existing:
+            ga_service = client.get_service("GoogleAdsService")
+            response = ga_service.search_stream(
+                customer_id=customer_id,
+                query=f"""
+                    SELECT campaign_criterion.resource_name
+                    FROM campaign_criterion
+                    WHERE campaign.id = {campaign_id}
+                      AND campaign_criterion.type = 'AD_SCHEDULE'
+                """,
+            )
+            remove_ops = []
+            for batch in response:
+                for row in batch.results:
+                    op = client.get_type("CampaignCriterionOperation")
+                    op.remove = row.campaign_criterion.resource_name
+                    remove_ops.append(op)
+            if remove_ops:
+                criterion_service.mutate_campaign_criteria(
+                    customer_id=customer_id, operations=remove_ops
+                )
+                removed_count = len(remove_ops)
+
+        add_ops = []
+        for sched in schedules:
+            op = client.get_type("CampaignCriterionOperation")
+            criterion = op.create
+            criterion.campaign = campaign_resource
+            criterion.ad_schedule.day_of_week = get_enum_value(
+                client, "DayOfWeekEnum", sched["day"].upper()
+            )
+            criterion.ad_schedule.start_hour = sched["start_hour"]
+            criterion.ad_schedule.start_minute = get_enum_value(
+                client, "MinuteOfHourEnum", "ZERO"
+            )
+            criterion.ad_schedule.end_hour = sched["end_hour"]
+            criterion.ad_schedule.end_minute = get_enum_value(
+                client, "MinuteOfHourEnum", "ZERO"
+            )
+            if "bid_modifier" in sched:
+                criterion.bid_modifier = sched["bid_modifier"]
+            add_ops.append(op)
+
+        if add_ops:
+            criterion_service.mutate_campaign_criteria(
+                customer_id=customer_id, operations=add_ops
+            )
+
+        return {
+            "campaign_id": campaign_id,
+            "schedules_added": len(add_ops),
+            "schedules_removed": removed_count,
+            "status": "updated",
+        }
+
+    except GoogleAdsException as e:
+        raise ToolError(format_error(e)) from e
+
+
+@mcp.tool()
+def google_set_device_bid_adjustment(
+    campaign_id: str,
+    mobile_bid_modifier: Optional[float] = None,
+    tablet_bid_modifier: Optional[float] = None,
+    desktop_bid_modifier: Optional[float] = None,
+    customer_id: Optional[str] = None,
+    login_customer_id: Optional[str] = None,
+) -> dict[str, Any]:
+    """Sets device bid adjustments for a campaign.
+
+    Controls how much to bid on each device type relative to the base bid.
+    A modifier of 0.0 means -100% (don't show on that device).
+    A modifier of 1.0 means no adjustment. A modifier of 1.5 means +50%.
+
+    Args:
+        campaign_id: The campaign ID to update.
+        mobile_bid_modifier: Bid modifier for mobile (0.0 = -100%, 0.5 = -50%,
+            1.0 = no change, 1.5 = +50%). Set to 0.0 to disable mobile ads.
+        tablet_bid_modifier: Bid modifier for tablets.
+        desktop_bid_modifier: Bid modifier for desktops.
+        customer_id: The Google Ads customer ID. Uses default if not provided.
+        login_customer_id: Optional MCC account ID.
+
+    Returns:
+        dict: Result with devices_updated list.
+
+    Example - B2B desktop-only:
+        mobile_bid_modifier=0.0, tablet_bid_modifier=0.0
+    """
+    try:
+        client = get_google_ads_client(login_customer_id=login_customer_id)
+        customer_id = resolve_customer_id(customer_id)
+        if not customer_id:
+            raise ToolError("No customer_id provided and no default configured")
+
+        campaign_resource = f"customers/{customer_id}/campaigns/{campaign_id}"
+        criterion_service = client.get_service("CampaignCriterionService")
+
+        # First query existing device criteria
+        ga_service = client.get_service("GoogleAdsService")
+        response = ga_service.search_stream(
+            customer_id=customer_id,
+            query=f"""
+                SELECT campaign_criterion.resource_name, campaign_criterion.device.type,
+                       campaign_criterion.bid_modifier
+                FROM campaign_criterion
+                WHERE campaign.id = {campaign_id}
+                  AND campaign_criterion.type = 'DEVICE'
+            """,
+        )
+        existing = {}
+        for batch in response:
+            for row in batch.results:
+                device_type = row.campaign_criterion.device.type_
+                existing[device_type] = row.campaign_criterion.resource_name
+
+        device_map = {
+            "MOBILE": (2, mobile_bid_modifier),
+            "TABLET": (3, tablet_bid_modifier),
+            "DESKTOP": (4, desktop_bid_modifier),
+        }
+
+        ops = []
+        devices_updated = []
+        for name, (enum_val, modifier) in device_map.items():
+            if modifier is None:
+                continue
+
+            if enum_val in existing:
+                # Update existing criterion
+                op = client.get_type("CampaignCriterionOperation")
+                criterion = op.update
+                criterion.resource_name = existing[enum_val]
+                criterion.bid_modifier = modifier
+                op.update_mask.paths.append("bid_modifier")
+                ops.append(op)
+            else:
+                # Create new criterion
+                op = client.get_type("CampaignCriterionOperation")
+                criterion = op.create
+                criterion.campaign = campaign_resource
+                criterion.device.type_ = enum_val
+                criterion.bid_modifier = modifier
+                ops.append(op)
+            devices_updated.append({"device": name, "bid_modifier": modifier})
+
+        if ops:
+            criterion_service.mutate_campaign_criteria(
+                customer_id=customer_id, operations=ops
+            )
+
+        return {
+            "campaign_id": campaign_id,
+            "devices_updated": devices_updated,
+            "status": "updated",
+        }
+
+    except GoogleAdsException as e:
+        raise ToolError(format_error(e)) from e
+
+
+@mcp.tool()
+def google_create_sitelink_asset(
+    link_text: str,
+    final_urls: list[str],
+    description1: Optional[str] = None,
+    description2: Optional[str] = None,
+    campaign_id: Optional[str] = None,
+    customer_id: Optional[str] = None,
+    login_customer_id: Optional[str] = None,
+) -> dict[str, Any]:
+    """Creates a sitelink extension asset and links it at account or campaign level.
+
+    Sitelinks appear below ads as additional links. They increase CTR and
+    take up more SERP space.
+
+    Args:
+        link_text: The sitelink text shown to users (max 25 chars).
+        final_urls: List of landing page URLs for this sitelink.
+        description1: Optional first description line (max 35 chars).
+        description2: Optional second description line (max 35 chars).
+        campaign_id: If provided, links to this campaign. Otherwise links at account level.
+        customer_id: The Google Ads customer ID. Uses default if not provided.
+        login_customer_id: Optional MCC account ID.
+
+    Returns:
+        dict: Created asset details with asset_resource_name and link_resource_name.
+    """
+    try:
+        client = get_google_ads_client(login_customer_id=login_customer_id)
+        customer_id = resolve_customer_id(customer_id)
+        if not customer_id:
+            raise ToolError("No customer_id provided and no default configured")
+
+        # Create the sitelink asset
+        asset_service = client.get_service("AssetService")
+        asset_op = client.get_type("AssetOperation")
+        asset = asset_op.create
+        asset.sitelink_asset.link_text = link_text
+        if description1:
+            asset.sitelink_asset.description1 = description1
+        if description2:
+            asset.sitelink_asset.description2 = description2
+        asset.final_urls.extend(final_urls)
+
+        asset_response = asset_service.mutate_assets(
+            customer_id=customer_id, operations=[asset_op]
+        )
+        asset_resource = asset_response.results[0].resource_name
+
+        # Link the asset
+        if campaign_id:
+            campaign_asset_service = client.get_service("CampaignAssetService")
+            link_op = client.get_type("CampaignAssetOperation")
+            link = link_op.create
+            link.campaign = f"customers/{customer_id}/campaigns/{campaign_id}"
+            link.asset = asset_resource
+            link.field_type = client.enums.AssetFieldTypeEnum.SITELINK
+            link_response = campaign_asset_service.mutate_campaign_assets(
+                customer_id=customer_id, operations=[link_op]
+            )
+            link_resource = link_response.results[0].resource_name
+        else:
+            customer_asset_service = client.get_service("CustomerAssetService")
+            link_op = client.get_type("CustomerAssetOperation")
+            link = link_op.create
+            link.asset = asset_resource
+            link.field_type = client.enums.AssetFieldTypeEnum.SITELINK
+            link_response = customer_asset_service.mutate_customer_assets(
+                customer_id=customer_id, operations=[link_op]
+            )
+            link_resource = link_response.results[0].resource_name
+
+        return {
+            "asset_resource_name": asset_resource,
+            "link_resource_name": link_resource,
+            "level": "campaign" if campaign_id else "customer",
+            "status": "created",
+        }
+
+    except GoogleAdsException as e:
+        raise ToolError(format_error(e)) from e
+
+
+@mcp.tool()
+def google_create_callout_asset(
+    callout_texts: list[str],
+    campaign_id: Optional[str] = None,
+    customer_id: Optional[str] = None,
+    login_customer_id: Optional[str] = None,
+) -> dict[str, Any]:
+    """Creates callout extension assets and links them at account or campaign level.
+
+    Callouts are short phrases (max 25 chars) shown with your ads highlighting
+    key selling points (e.g. "Free Shipping", "24/7 Support", "No Hidden Fees").
+
+    Args:
+        callout_texts: List of callout text strings (max 25 chars each, min 2 recommended).
+        campaign_id: If provided, links to this campaign. Otherwise links at account level.
+        customer_id: The Google Ads customer ID. Uses default if not provided.
+        login_customer_id: Optional MCC account ID.
+
+    Returns:
+        dict: Created assets with asset_count and link details.
+    """
+    try:
+        client = get_google_ads_client(login_customer_id=login_customer_id)
+        customer_id = resolve_customer_id(customer_id)
+        if not customer_id:
+            raise ToolError("No customer_id provided and no default configured")
+
+        asset_service = client.get_service("AssetService")
+        asset_ops = []
+        for text in callout_texts:
+            op = client.get_type("AssetOperation")
+            op.create.callout_asset.callout_text = text
+            asset_ops.append(op)
+
+        asset_response = asset_service.mutate_assets(
+            customer_id=customer_id, operations=asset_ops
+        )
+        asset_resources = [r.resource_name for r in asset_response.results]
+
+        # Link all assets
+        if campaign_id:
+            campaign_asset_service = client.get_service("CampaignAssetService")
+            link_ops = []
+            for ar in asset_resources:
+                op = client.get_type("CampaignAssetOperation")
+                link = op.create
+                link.campaign = f"customers/{customer_id}/campaigns/{campaign_id}"
+                link.asset = ar
+                link.field_type = client.enums.AssetFieldTypeEnum.CALLOUT
+                link_ops.append(op)
+            campaign_asset_service.mutate_campaign_assets(
+                customer_id=customer_id, operations=link_ops
+            )
+        else:
+            customer_asset_service = client.get_service("CustomerAssetService")
+            link_ops = []
+            for ar in asset_resources:
+                op = client.get_type("CustomerAssetOperation")
+                link = op.create
+                link.asset = ar
+                link.field_type = client.enums.AssetFieldTypeEnum.CALLOUT
+                link_ops.append(op)
+            customer_asset_service.mutate_customer_assets(
+                customer_id=customer_id, operations=link_ops
+            )
+
+        return {
+            "asset_resources": asset_resources,
+            "asset_count": len(asset_resources),
+            "level": "campaign" if campaign_id else "customer",
+            "status": "created",
+        }
+
+    except GoogleAdsException as e:
+        raise ToolError(format_error(e)) from e
+
+
+@mcp.tool()
+def google_create_structured_snippet_asset(
+    header: str,
+    values: list[str],
+    campaign_id: Optional[str] = None,
+    customer_id: Optional[str] = None,
+    login_customer_id: Optional[str] = None,
+) -> dict[str, Any]:
+    """Creates a structured snippet extension asset and links it.
+
+    Structured snippets highlight specific aspects of your products/services
+    under a predefined header.
+
+    Args:
+        header: The snippet header. Must be one of: Brands, Courses, Degree programs,
+            Destinations, Featured hotels, Insurance coverage, Models, Neighborhoods,
+            Service catalog, Shows, Styles, Types.
+        values: List of values under the header (min 3 recommended).
+            Example: header="Types", values=["CRM", "ERP", "Sklad", "Výroba"]
+        campaign_id: If provided, links to this campaign. Otherwise links at account level.
+        customer_id: The Google Ads customer ID. Uses default if not provided.
+        login_customer_id: Optional MCC account ID.
+
+    Returns:
+        dict: Created asset details.
+    """
+    try:
+        client = get_google_ads_client(login_customer_id=login_customer_id)
+        customer_id = resolve_customer_id(customer_id)
+        if not customer_id:
+            raise ToolError("No customer_id provided and no default configured")
+
+        asset_service = client.get_service("AssetService")
+        asset_op = client.get_type("AssetOperation")
+        asset = asset_op.create
+        asset.structured_snippet_asset.header = header
+        asset.structured_snippet_asset.values.extend(values)
+
+        asset_response = asset_service.mutate_assets(
+            customer_id=customer_id, operations=[asset_op]
+        )
+        asset_resource = asset_response.results[0].resource_name
+
+        if campaign_id:
+            campaign_asset_service = client.get_service("CampaignAssetService")
+            link_op = client.get_type("CampaignAssetOperation")
+            link = link_op.create
+            link.campaign = f"customers/{customer_id}/campaigns/{campaign_id}"
+            link.asset = asset_resource
+            link.field_type = client.enums.AssetFieldTypeEnum.STRUCTURED_SNIPPET
+            campaign_asset_service.mutate_campaign_assets(
+                customer_id=customer_id, operations=[link_op]
+            )
+        else:
+            customer_asset_service = client.get_service("CustomerAssetService")
+            link_op = client.get_type("CustomerAssetOperation")
+            link = link_op.create
+            link.asset = asset_resource
+            link.field_type = client.enums.AssetFieldTypeEnum.STRUCTURED_SNIPPET
+            customer_asset_service.mutate_customer_assets(
+                customer_id=customer_id, operations=[link_op]
+            )
+
+        return {
+            "asset_resource_name": asset_resource,
+            "level": "campaign" if campaign_id else "customer",
+            "status": "created",
         }
 
     except GoogleAdsException as e:
