@@ -1485,3 +1485,136 @@ def google_create_structured_snippet_asset(
 
     except GoogleAdsException as e:
         raise ToolError(format_error(e)) from e
+
+
+@mcp.tool()
+def google_set_tracking_template(
+    tracking_url_template: Optional[str] = None,
+    final_url_suffix: Optional[str] = None,
+    campaign_id: Optional[str] = None,
+    customer_id: Optional[str] = None,
+    login_customer_id: Optional[str] = None,
+) -> dict[str, Any]:
+    """Sets tracking URL template and/or final URL suffix at account or campaign level.
+
+    When no campaign_id is provided, sets the template at account level (Customer resource).
+    Account-level templates apply to ALL campaigns as default.
+    When campaign_id is provided, sets at campaign level (overrides account-level).
+
+    Common tracking_url_template patterns:
+        - "{lpurl}?utm_source=google&utm_medium=cpc&utm_campaign={_campaign}"
+        - "{lpurl}?gclid={gclid}" (auto-tagging — usually not needed, use auto-tagging setting)
+
+    Common final_url_suffix patterns:
+        - "utm_source=google&utm_medium=cpc"
+        - "utm_source=google&utm_medium=cpc&utm_campaign={_campaign}"
+
+    ValueTrack parameters you can use:
+        - {lpurl} - Landing page URL (required in tracking_url_template)
+        - {gclid} - Google click ID
+        - {campaignid} - Campaign ID
+        - {adgroupid} - Ad group ID
+        - {keyword} - Keyword that triggered the ad
+        - {device} - Device type (m, t, c)
+        - {matchtype} - Match type (e, p, b)
+        - {network} - Network (g=Google Search, s=Search Partner, d=Display)
+        - {_campaign} - Custom parameter (set via campaign custom parameters)
+
+    Args:
+        tracking_url_template: The tracking URL template. Use {lpurl} as placeholder
+            for the landing page URL. Set to empty string "" to clear.
+        final_url_suffix: URL parameters appended to the landing page URL.
+            Do NOT include "?" — it's added automatically.
+            Set to empty string "" to clear.
+        campaign_id: Optional campaign ID. If provided, sets at campaign level.
+            If omitted, sets at account level.
+        customer_id: The Google Ads customer ID (digits only, no dashes).
+            Uses default from config if not provided.
+        login_customer_id: Optional MCC account ID if accessing through
+            a manager account.
+
+    Returns:
+        dict: Update result:
+            - level: "account" or "campaign"
+            - resource_name: The updated resource name
+            - updated_fields: List of fields that were updated
+            - status: "updated"
+
+    Raises:
+        ToolError: If no fields provided or API request fails.
+    """
+    if tracking_url_template is None and final_url_suffix is None:
+        raise ToolError(
+            "Provide at least one of tracking_url_template or final_url_suffix."
+        )
+
+    try:
+        client = get_google_ads_client(login_customer_id=login_customer_id)
+        customer_id = resolve_customer_id(customer_id)
+        if not customer_id:
+            raise ToolError("No customer_id provided and no default configured")
+
+        updated_fields: list[str] = []
+
+        if campaign_id is not None:
+            # Campaign-level tracking template
+            campaign_service = client.get_service("CampaignService")
+            campaign_operation = client.get_type("CampaignOperation")
+            campaign = campaign_operation.update
+            campaign.resource_name = (
+                f"customers/{customer_id}/campaigns/{campaign_id}"
+            )
+
+            if tracking_url_template is not None:
+                campaign.tracking_url_template = tracking_url_template
+                updated_fields.append("tracking_url_template")
+
+            if final_url_suffix is not None:
+                campaign.final_url_suffix = final_url_suffix
+                updated_fields.append("final_url_suffix")
+
+            campaign_operation.update_mask.paths.extend(updated_fields)
+
+            response = campaign_service.mutate_campaigns(
+                customer_id=customer_id,
+                operations=[campaign_operation],
+            )
+
+            return {
+                "level": "campaign",
+                "resource_name": response.results[0].resource_name,
+                "updated_fields": updated_fields,
+                "status": "updated",
+            }
+
+        else:
+            # Account-level tracking template
+            customer_service = client.get_service("CustomerService")
+            customer_operation = client.get_type("CustomerOperation")
+            customer = customer_operation.update
+            customer.resource_name = f"customers/{customer_id}"
+
+            if tracking_url_template is not None:
+                customer.tracking_url_template = tracking_url_template
+                updated_fields.append("tracking_url_template")
+
+            if final_url_suffix is not None:
+                customer.final_url_suffix = final_url_suffix
+                updated_fields.append("final_url_suffix")
+
+            customer_operation.update_mask.paths.extend(updated_fields)
+
+            response = customer_service.mutate_customer(
+                customer_id=customer_id,
+                operation=customer_operation,
+            )
+
+            return {
+                "level": "account",
+                "resource_name": response.result.resource_name,
+                "updated_fields": updated_fields,
+                "status": "updated",
+            }
+
+    except GoogleAdsException as e:
+        raise ToolError(format_error(e)) from e

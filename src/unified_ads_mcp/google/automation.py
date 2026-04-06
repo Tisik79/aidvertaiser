@@ -214,7 +214,7 @@ def google_bulk_set_campaign_status(
 def google_list_holidays(
     country: str = "CZ",
     year: Optional[int] = None,
-) -> list[dict[str, str]]:
+) -> list[dict[str, Any]]:
     """Lists state holidays for a country and year.
 
     Includes both fixed holidays and Easter-based movable holidays.
@@ -225,7 +225,8 @@ def google_list_holidays(
         year: Year to list holidays for. Default: current year.
 
     Returns:
-        list[dict]: Holidays with date (YYYY-MM-DD), name, and is_weekend flag.
+        list[dict]: Holidays with date (YYYY-MM-DD), name, day_of_week,
+            and is_weekend flag.
     """
     if year is None:
         year = date.today().year
