@@ -31,6 +31,7 @@ from typing import Optional
 import requests
 import yaml
 from google.auth.transport.requests import Request
+from google.oauth2 import service_account
 from google.oauth2.credentials import Credentials
 
 from .oauth_server import (
@@ -78,9 +79,10 @@ class GoogleAnalyticsAuth:
             FileNotFoundError: If no config file can be found (neither analytics nor ads).
             ValueError: If config is missing required fields.
         """
-        self.config_path = config_path or os.environ.get(
-            "GOOGLE_ANALYTICS_CREDENTIALS",
-            str(Path.home() / "google-analytics.yaml"),
+        # PATCH (Svobodné reality): respektuj sjednocený config dir ~/.unified-ads-mcp
+        from ..config import resolve_config_path
+        self.config_path = config_path or resolve_config_path(
+            "google-analytics.yaml", "GOOGLE_ANALYTICS_CREDENTIALS"
         )
         self._config = self._load_config()
         self._credentials: Optional[Credentials] = None
@@ -136,6 +138,13 @@ class GoogleAnalyticsAuth:
         Raises:
             ValueError: If required fields are missing.
         """
+        # PATCH (Svobodné reality): service_account_json v configu nahrazuje OAuth klienta
+        if self._config.get("service_account_json"):
+            sa_path = os.path.expanduser(str(self._config["service_account_json"]))
+            if not os.path.exists(sa_path):
+                raise ValueError(f"service_account_json nenalezen: {sa_path}")
+            return
+
         required_fields = ["client_id", "client_secret"]
         missing = [f for f in required_fields if not self._config.get(f)]
 
@@ -180,6 +189,16 @@ class GoogleAnalyticsAuth:
             TimeoutError: If browser authentication times out.
             RuntimeError: If token exchange fails.
         """
+        # PATCH (Svobodné reality): service account = žádný OAuth flow
+        sa_path = self._config.get("service_account_json")
+        if sa_path:
+            if self._credentials is None or force_refresh:
+                self._credentials = service_account.Credentials.from_service_account_file(
+                    os.path.expanduser(str(sa_path)), scopes=ANALYTICS_SCOPES
+                )
+                print("[Google Analytics] Using service account credentials", file=sys.stderr)
+            return self._credentials
+
         if not force_refresh:
             # Try cached credentials first
             cached = load_token("google_analytics")
